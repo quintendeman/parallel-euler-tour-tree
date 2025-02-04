@@ -27,29 +27,11 @@
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
+#include <parlay/parallel.h>
+#include <parlay/primitives.h>
+#include <parlay/sequence.h>
 using namespace std;
-
-#if defined(CILK)
-#include <cilk/cilk.h>
-#include <cilk/cilk_api.h>
-#define parallel_for cilk_for
-//#define parallel_for_1 _Pragma("cilk_grainsize = 1") cilk_for
-#define parallel_for_1 cilk_for
-#define parallel_for_16 _Pragma("cilk_grainsize = 16") cilk_for
-#define parallel_for_256 _Pragma("cilk_grainsize = 256") cilk_for
-inline size_t nworkers() {
-  return __cilkrts_get_nworkers();
-}
-#else
-#define cilk_spawn
-#define cilk_sync
-#define parallel_main main
-#define parallel_for for
-#define parallel_for_1 for
-#define parallel_for_256 for
-#define cilk_for for
-inline size_t nworkers() { return 1; }
-#endif
+using namespace parlay;
 
 // Needed to make frequent large allocations efficient with standard
 // malloc implementation.  Otherwise they are allocated directly from
@@ -188,18 +170,6 @@ namespace utils { // to avoid conflict with other symbols named sequence
 
 #define nblocks(_n,_bsize) (1 + ((_n)-1)/(_bsize))
 
-#define blocked_for(_i, _s, _e, _bsize, _body)  {	\
-      intT _ss = _s;					\
-      intT _ee = _e;					\
-      intT _n = _ee-_ss;					\
-      intT _l = nblocks(_n,_bsize);			\
-      parallel_for (intT _i = 0; _i < _l; _i++) {		\
-        intT _s = _ss + _i * (_bsize);			\
-        intT _e = min(_s + (_bsize), _ee);		\
-        _body						\
-          }						\
-    }
-
     template <class OT, class intT, class F, class G>
     OT reduceSerial(intT s, intT e, F f, G g) {
       OT r = g(s);
@@ -212,8 +182,9 @@ namespace utils { // to avoid conflict with other symbols named sequence
       intT l = nblocks(e-s, _SCAN_BSIZE);
       if (l <= 1) return reduceSerial<OT>(s, e, f , g);
       OT *Sums = newA(OT,l);
-      blocked_for (i, s, e, _SCAN_BSIZE,
-                   Sums[i] = reduceSerial<OT>(s, e, f, g););
+      blocked_for (s, e, _SCAN_BSIZE, [&] (size_t i) {
+        Sums[i] = reduceSerial<OT>(s, e, f, g);
+      });
       OT r = reduce<OT>((intT) 0, l, f, getA<OT,intT>(Sums));
       free(Sums);
       return r;
@@ -277,11 +248,13 @@ namespace utils { // to avoid conflict with other symbols named sequence
       intT l = nblocks(n,_SCAN_BSIZE);
       if (l <= 2) return scanSerial(Out, s, e, f, g, zero, inclusive, back);
       ET *Sums = newA(ET,nblocks(n,_SCAN_BSIZE));
-      blocked_for (i, s, e, _SCAN_BSIZE,
-                   Sums[i] = reduceSerial<ET>(s, e, f, g););
+      blocked_for (s, e, _SCAN_BSIZE, [&] (size_t i) {
+        Sums[i] = reduceSerial<ET>(s, e, f, g);
+      });
       ET total = scan(Sums, (intT) 0, l, f, getA<ET,intT>(Sums), zero, false, back);
-      blocked_for (i, s, e, _SCAN_BSIZE,
-                   scanSerial(Out, s, e, f, g, Sums[i], inclusive, back););
+      blocked_for (s, e, _SCAN_BSIZE, [&] (size_t i) {
+        scanSerial(Out, s, e, f, g, Sums[i], inclusive, back);
+      });
       free(Sums);
       return total;
     }
@@ -344,10 +317,14 @@ namespace utils { // to avoid conflict with other symbols named sequence
       intT l = nblocks(e-s, _F_BSIZE);
       if (l <= 1) return packSerial(Out, Fl, s, e, f);
       intT *Sums = newA(intT,l);
-      blocked_for (i, s, e, _F_BSIZE, Sums[i] = sumFlagsSerial(Fl+s, e-s););
+      blocked_for (s, e, _F_BSIZE, [&] (size_t i) {
+        Sums[i] = sumFlagsSerial(Fl+s, e-s);
+      });
       intT m = plusScan(Sums, Sums, l);
       if (Out == NULL) Out = newA(ET,m);
-      blocked_for(i, s, e, _F_BSIZE, packSerial(Out+Sums[i], Fl, s, e, f););
+      blocked_for (s, e, _F_BSIZE, [&] (size_t i) {
+        packSerial(Out+Sums[i], Fl, s, e, f);
+      });
       free(Sums);
       return _seq<ET>(Out,m);
     }
@@ -368,7 +345,9 @@ namespace utils { // to avoid conflict with other symbols named sequence
 
     template <class ET, class intT, class PRED>
     intT filter(ET* In, ET* Out, bool* Fl, intT n, PRED p) {
-      parallel_for (intT i=0; i < n; i++) Fl[i] = (bool) p(In[i]);
+      parallel_for (0, n, [&] (size_t i) {
+        Fl[i] = (bool) p(In[i]);
+      });
       intT  m = pack(In, Out, Fl, n);
       return m;
     }
@@ -453,14 +432,14 @@ inline ulong hashInt(ulong a) {
 // UINT_E_MAX.
 template <class G>
 void remDuplicates(G& get_key, uintE* flags, long m, long n) {
-  parallel_for(size_t i=0; i<m; i++) {
+  parallel_for (0, m, [&] (size_t i) {
     uintE key = get_key(i);
     if(key != UINT_E_MAX && flags[key] == UINT_E_MAX) {
       CAS(&flags[key],(uintE)UINT_E_MAX,static_cast<uintE>(i));
     }
-  }
+  });
   //reset flags
-  parallel_for(size_t i=0; i<m; i++) {
+  parallel_for (0, m, [&] (size_t i) {
     uintE key = get_key(i);
     if(key != UINT_E_MAX) {
       if(flags[key] == i) { //win
@@ -469,20 +448,8 @@ void remDuplicates(G& get_key, uintE* flags, long m, long n) {
         get_key(i) = UINT_E_MAX; //lost
       }
     }
-  }
+  });
 }
-
-#define granular_for(_i, _start, _end, _cond, _body) { \
-  if (_cond) { \
-    {parallel_for(size_t _i=_start; _i < _end; _i++) { \
-      _body \
-    }} \
-  } else { \
-    {for (size_t _i=_start; _i < _end; _i++) { \
-      _body \
-    }} \
-  } \
-  }
 
 namespace pbbs {
 
@@ -545,9 +512,11 @@ namespace pbbs {
 #endif
     if (r == NULL) {fprintf(stderr, "Cannot allocate space"); exit(1);}
     // a hack to make sure tlb is full for huge pages
-    if (touch_pages)
-      parallel_for (size_t i = 0; i < bytes; i = i + (1 << 21))
-        ((bool*) r)[i] = 0;
+    if (touch_pages) {
+      parallel_for (0, ceil((double) bytes / (1 << 21)), [&] (size_t i) {
+        ((bool*) r)[i*(1 << 21)] = 0;
+      });
+    }
     return r;
   }
 
@@ -557,7 +526,7 @@ namespace pbbs {
     E* r = new_array_no_init<E>(n);
     if (!std::is_trivially_default_constructible<E>::value) {
       if (n > 2048)
-        parallel_for (size_t i = 0; i < n; i++) new ((void*) (r+i)) E;
+        parallel_for (0, n, [&] (size_t i) { new ((void*) (r+i)) E; });
       else
         for (size_t i = 0; i < n; i++) new ((void*) (r+i)) E;
     }
@@ -570,7 +539,7 @@ namespace pbbs {
     // C++14 -- suppored by gnu C++11
     if (!std::is_trivially_destructible<E>::value) {
       if (n > 2048)
-        parallel_for (size_t i = 0; i < n; i++) A[i].~E();
+        parallel_for (0, n, [&] (size_t i) { A[i].~E(); });
       else
         for (size_t i = 0; i < n; i++) A[i].~E();
     }

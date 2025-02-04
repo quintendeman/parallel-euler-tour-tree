@@ -40,11 +40,11 @@ namespace pbbs {
   template <class F>
   void sliced_for(size_t n, size_t block_size, const F& f) {
     size_t l = num_blocks(n, block_size);
-    parallel_for_1 (size_t i = 0; i < l; i++) {	
+    parallel_for (0, l, [&] (size_t i) {
       size_t s = i * block_size; 		
       size_t e = min(s + block_size, n);
       f(i, s, e);
-    }
+    });
   }
 
   template <class Seq, class F>

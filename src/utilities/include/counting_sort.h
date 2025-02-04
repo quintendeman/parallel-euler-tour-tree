@@ -106,7 +106,7 @@ namespace pbbs {
     size_t sqrt = (size_t) ceil(pow(n,0.5));
     size_t num_blocks = 
       (size_t) (n < (1 << 24)) ? (sqrt/32) : ((n < (1 << 28)) ? sqrt/2 : sqrt);
-    s_size_t num_threads = __cilkrts_get_nworkers();
+    s_size_t num_threads = parlay::num_workers();
     num_blocks = 1 << log2_up(num_blocks);
 
     // if insufficient parallelism, sort sequentially
@@ -120,13 +120,13 @@ namespace pbbs {
     s_size_t *counts = new_array_no_init<s_size_t>(m,1);
 
     // sort each block
-    parallel_for_1 (size_t i = 0; i < num_blocks; ++i) {
+    parallel_for(0, num_blocks, [&] (size_t i) {
       s_size_t start = std::min(i * block_size, n);
       s_size_t end =  std::min(start + block_size, n);
       _seq_count_sort<b_size_t,s_size_t>(In.slice(start,end), B+start, 
                                          Keys.slice(start,end),
                                          counts + i*num_buckets, num_buckets);
-    }
+    });
     
     OutS C = Out;
     size_t* bucket_offsets = transpose_buckets(B, Out.as_array(),

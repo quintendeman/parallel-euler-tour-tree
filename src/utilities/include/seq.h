@@ -26,18 +26,19 @@ namespace seq {
     sequence(const size_t n, T v)
       : s(pbbs::new_array_no_init<E>(n,1)), allocated(true) {
       e = s + n;
-      parallel_for (size_t i = 0; i < n; i++)
+      parallel_for (0, n, [&] (size_t i) {
         new ((void*) (s+i)) T(v);
+      });
     };
 
     template <typename Func>
     sequence(const size_t n, Func fun)
       : s(pbbs::new_array_no_init<E>(n)), allocated(true) {
       e = s + n;
-      parallel_for (size_t i = 0; i < n; i++) {
+      parallel_for (0, n, [&] (size_t i) {
         T x = fun(i);
         new ((void*) (s+i)) T(x);
-      }
+      });
     }
 
     sequence(E* s, const size_t n, bool allocated = false)
@@ -51,8 +52,9 @@ namespace seq {
     template <typename X, typename F>
     static sequence<X> tabulate(size_t n, F f) {
       X* r = pbbs::new_array_no_init<X>(n);
-      parallel_for (size_t i = 0; i < n; i++)
+      parallel_for (0, n, [&] (size_t i) {
         new ((void*) (r+i)) X(f(i));
+      });
       sequence<X> y(r,n);
       y.allocated = true;
       return y;

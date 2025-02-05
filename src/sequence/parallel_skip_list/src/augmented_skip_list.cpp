@@ -163,9 +163,7 @@ void AugmentedElement::BatchUpdate(
       } else {
         // Someone other execution is shares this ancestor and has already
         // claimed it, so there's no need to walk further up.
-        if (curr_update_level > level) {
-          writeMin(&curr->update_level_, level);
-        }
+        writeMin(&curr->update_level_, level);
         top_nodes[i] = nullptr;
         break;
       }

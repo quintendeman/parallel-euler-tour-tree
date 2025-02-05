@@ -68,6 +68,7 @@ class AugmentedElement : private ElementBase<AugmentedElement> {
 
   // Update aggregate value of node and clear `join_update_level` after joins.
   void UpdateTopDown(int level);
+  void UpdateTopDownHelper(int level, AugmentedElement* curr);
   void UpdateTopDownSequential(int level);
 
   int* values_;

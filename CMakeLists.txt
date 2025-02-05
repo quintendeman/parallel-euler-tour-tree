@@ -7,8 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -march=native")
-
 # add_compile_options(-fsanitize=address)
 # add_link_options(-fsanitize=address)
 # add_compile_options(-fsanitize=undefined)
@@ -36,3 +34,11 @@ add_executable(skip_list_tests
 )
 target_link_libraries(skip_list_tests PRIVATE parlay)
 target_include_directories(skip_list_tests PRIVATE src)
+
+add_executable(augmented_skip_list_tests
+  src/sequence/parallel_skip_list/tests/test_parallel_augmented_skip_list.cpp
+  src/sequence/parallel_skip_list/src/skip_list_base.cpp
+  src/sequence/parallel_skip_list/src/augmented_skip_list.cpp
+)
+target_link_libraries(augmented_skip_list_tests PRIVATE parlay)
+target_include_directories(augmented_skip_list_tests PRIVATE src)

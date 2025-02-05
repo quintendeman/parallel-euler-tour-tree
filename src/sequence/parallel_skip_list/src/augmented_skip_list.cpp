@@ -87,19 +87,12 @@ void AugmentedElement::UpdateTopDown(int level) {
   }
 
   // Recursively update augmented values of children.
-  AugmentedElement* curr{this};
-  do {
-    if (curr->update_level_ != NA && curr->update_level_ < level) {
-      cilk_spawn curr->UpdateTopDown(level - 1);
-    }
-    curr = curr->neighbors_[level - 1].next;
-  } while (curr != nullptr && curr->height_ < level + 1);
-  cilk_sync;
+  UpdateTopDownHelper(level, this);
 
   // Now that children have correct augmented valeus, update self's augmented
   // value.
   int sum{values_[level - 1]};
-  curr = neighbors_[level - 1].next;
+  AugmentedElement* curr = neighbors_[level - 1].next;
   while (curr != nullptr && curr->height_ < level + 1) {
     sum += curr->values_[level - 1];
     curr = curr->neighbors_[level - 1].next;
@@ -108,6 +101,23 @@ void AugmentedElement::UpdateTopDown(int level) {
 
   if (height_ == level + 1) {
     update_level_ = NA;
+  }
+}
+
+void AugmentedElement::UpdateTopDownHelper(int level, AugmentedElement* curr) {
+  if (curr->update_level_ != NA && curr->update_level_ < level) {
+    parlay::parallel_do(
+      [&] {
+        auto next = curr->neighbors_[level-1].next;
+        if (next != nullptr && next->height_ < level+1)
+          UpdateTopDownHelper(level, next);
+      },
+      [&] { curr->UpdateTopDown(level-1); }
+    );
+  } else {
+    auto next = curr->neighbors_[level-1].next;
+    if (next != nullptr && next->height_ < level+1)
+      UpdateTopDownHelper(level, next);
   }
 }
 
@@ -123,9 +133,9 @@ void AugmentedElement::UpdateTopDown(int level) {
 void AugmentedElement::BatchUpdate(
     AugmentedElement** elements, int* new_values, int len) {
   if (new_values != nullptr) {
-    parallel_for (int i = 0; i < len; i++) {
+    parallel_for (0, len, [&] (size_t i) {
       elements[i]->values_[0] = new_values[i];
-    }
+    });
   }
 
   // The nodes whose augmented values need updating are the ancestors of
@@ -135,7 +145,7 @@ void AugmentedElement::BatchUpdate(
   // required augmented values.
   AugmentedElement** top_nodes{pbbs::new_array_no_init<AugmentedElement*>(len)};
 
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     int level{0};
     AugmentedElement* curr{elements[i]};
     while (true) {
@@ -160,13 +170,13 @@ void AugmentedElement::BatchUpdate(
         break;
       }
     }
-  }
+  });
 
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     if (top_nodes[i] != nullptr) {
       top_nodes[i]->UpdateTopDown(top_nodes[i]->height_ - 1);
     }
-  }
+  });
 
   pbbs::delete_array(top_nodes, len);
 }
@@ -175,19 +185,19 @@ void AugmentedElement::BatchJoin(
     pair<AugmentedElement*, AugmentedElement*>* joins, int len) {
   AugmentedElement** join_lefts{
       pbbs::new_array_no_init<AugmentedElement*>(len)};
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     Join(joins[i].first, joins[i].second);
     join_lefts[i] = joins[i].first;
-  }
+  });
   BatchUpdate(join_lefts, nullptr, len);
   pbbs::delete_array(join_lefts, len);
 }
 
 void AugmentedElement::BatchSplit(AugmentedElement** splits, int len) {
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     splits[i]->Split();
-  }
-  parallel_for (int i = 0; i < len; i++) {
+  });
+  parallel_for (0, len, [&] (size_t i) {
     AugmentedElement* curr{splits[i]};
     // `can_proceed` breaks ties when there are duplicate splits. When two
     // splits occur at the same place, only one of them should walk up and
@@ -212,10 +222,10 @@ void AugmentedElement::BatchSplit(AugmentedElement** splits, int len) {
         }
       }
     }
-  }
-  parallel_for (int i = 0; i < len; i++) {
+  });
+  parallel_for (0, len, [&] (size_t i) {
     splits[i]->update_level_ = NA;
-  }
+  });
 }
 
 int AugmentedElement::GetSubsequenceSum(

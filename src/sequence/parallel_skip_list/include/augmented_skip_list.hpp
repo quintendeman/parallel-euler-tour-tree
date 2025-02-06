@@ -60,7 +60,7 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   // For each `i`=0,1,...,`len`-1, assign value `new_values[i]` to element
   // `elements[i]`.
   static void BatchUpdate(
-      AugmentedElement** elements, int* new_values, int len);
+      AugmentedElement** elements, T* new_values, int len);
 
   // Get the result of applying the augmentation function over the subsequence
   // between `left` and `right` inclusive.
@@ -222,7 +222,7 @@ void AugmentedElement<T>::UpdateTopDownHelper(int level, AugmentedElement* curr)
 // structurally changed.
 template<typename T>
 void AugmentedElement<T>::BatchUpdate(
-    AugmentedElement** elements, int* new_values, int len) {
+    AugmentedElement** elements, T* new_values, int len) {
   if (new_values != nullptr) {
     parallel_for (0, len, [&] (size_t i) {
       elements[i]->values_[0] = new_values[i];

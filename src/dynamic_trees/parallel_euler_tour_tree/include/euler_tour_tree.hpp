@@ -40,6 +40,8 @@ using Element = _internal::Element<T>;
   // Removes edge {`u`, `v`} from forest. The edge must be present in the
   // forest.
   void Cut(int u, int v);
+  // Set the value of vertex `v` to be `new_value`.
+  void Update(int v, T new_value);
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
@@ -47,6 +49,9 @@ using Element = _internal::Element<T>;
   // Removes all edges in the `len`-length array `cuts` from the forest. These
   // edges must be present in the forest and must be distinct.
   void BatchCut(std::pair<int, int>* cuts, int len);
+  // Updates all the vertices in the `len`-length array `vertices` with the
+  // new corresponding value in the `new_values` array.
+  void BatchUpdate(int* vertices, T* new_values, int len);
 
  private:
   void BatchCutRecurse(std::pair<int, int>* cuts, int len,
@@ -360,6 +365,21 @@ void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
   pbbs::delete_array(edge_elements, len);
   pbbs::delete_array(join_targets, 4 * len);
   pbbs::delete_array(ignored, len);
+}
+
+template<typename T>
+void EulerTourTree<T>::Update(int v, T new_value) {
+  Element* representative = edges_.Find(v,v);
+  BatchUpdate(&representative, &new_value, 1);
+}
+
+template<typename T>
+void EulerTourTree<T>::BatchUpdate(int* vertices, T* new_values, int len) {
+  Element** update_targets{pbbs::new_array_no_init<Element*>(len)};
+  parallel_for (0, len, [&] (size_t i) {
+    update_targets[i] = edges_.Find(vertices[i], vertices[i]);
+  });
+  BatchUpdate(update_targets, new_values, len);
 }
 
 }  // namespace parallel_euler_tour_tree

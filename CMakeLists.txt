@@ -58,3 +58,12 @@ add_executable(benchmark_skip_list
 )
 target_link_libraries(benchmark_skip_list PRIVATE parlay)
 target_include_directories(benchmark_skip_list PRIVATE src)
+
+add_executable(benchmark_euler_tour_tree
+  src/dynamic_trees/benchmarks/parallel_ett/benchmark_dynamic_trees_parallel_ett.cpp
+  src/dynamic_trees/parallel_euler_tour_tree/src/euler_tour_tree.cpp
+  src/sequence/parallel_skip_list/src/skip_list_base.cpp
+  src/dynamic_trees/parallel_euler_tour_tree/src/edge_map.cpp
+)
+target_link_libraries(benchmark_euler_tour_tree PRIVATE parlay)
+target_include_directories(benchmark_euler_tour_tree PRIVATE src)

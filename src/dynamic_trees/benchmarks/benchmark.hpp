@@ -111,7 +111,7 @@ void RunBenchmark(int argc, char** argv) {
   int num_iters{P.getOptionIntValue("-iters", 4)};
   char* graph_filename{P.getArgument(0)};
 
-  std::cout << "Running with " << nworkers() << " workers" << std::endl;
+  std::cout << "Running with " << parlay::num_workers() << " workers" << std::endl;
   ReadGraphOutput graph_info{ReadGraph(graph_filename)};
   const int m{graph_info.num_edges};
   std::pair<int, int>* edges{graph_info.edges};

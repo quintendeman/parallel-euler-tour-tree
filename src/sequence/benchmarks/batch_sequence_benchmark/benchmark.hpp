@@ -42,13 +42,13 @@ int* GetBatchIndices(int num_elements, int batch_size,
     int* perm, const std::string& batch_type) {
   int* batch_indices{pbbs::new_array_no_init<int>(batch_size)};
   if (batch_type == "random") {
-    parallel_for (int i = 0; i < batch_size; i++) {
+    parallel_for (0, batch_size, [&] (size_t i) {
       batch_indices[i] = perm[i];
-    }
+    });
   } else if (batch_type == "backward") {
-    parallel_for (int i = 0; i < batch_size; i++) {
+    parallel_for (0, batch_size, [&] (size_t i) {
       batch_indices[i] = num_elements - i - 2;
-    }
+    });
   } else {
     TRACE(batch_type);
     assert(0);
@@ -59,11 +59,11 @@ int* GetBatchIndices(int num_elements, int batch_size,
 template <typename Element>
 void ConstructJoinsAndSplitsFromIndices(int* indices, Element* elements,
     int len, pair<Element*, Element*>* joins, Element** splits) {
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     int idx{indices[i]};
     joins[i] = make_pair(&elements[idx], &elements[idx + 1]);
     splits[i] = &elements[idx];
-  }
+  });
 }
 
 // Pick `batch_size` many element locations according to `GetBatchIndices`.
@@ -79,7 +79,7 @@ void RunBenchmark(Element* elements, const BenchmarkParameters& parameters) {
   typedef pair<Element*, Element*> ElementPPair;
   assert(0 <= batch_size && batch_size < num_elements);
 
-  std::cout << "Running with " << nworkers() << " workers" << std::endl;
+  std::cout << "Running with " << parlay::num_workers() << " workers" << std::endl;
 
   int* perm{pbbs::new_array_no_init<int>(num_elements - 1)};
   for (int i = 0; i < num_elements - 1; i++) {

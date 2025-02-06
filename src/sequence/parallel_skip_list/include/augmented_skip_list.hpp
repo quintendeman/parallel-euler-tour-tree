@@ -20,7 +20,7 @@ namespace parallel_skip_list {
 // that the function will be applied starting from `this`, because where we
 // begin applying the function matters for non-commutative functions.
 template <typename T>
-class AugmentedElement : private ElementBase<AugmentedElement<T>> {
+class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   friend class ElementBase<AugmentedElement<T>>;
  public:
   using ElementBase<AugmentedElement<T>>::Initialize;

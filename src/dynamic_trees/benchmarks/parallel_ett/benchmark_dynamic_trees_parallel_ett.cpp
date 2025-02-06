@@ -4,6 +4,6 @@
 
 int main(int argc, char** argv) {
   dynamic_trees_benchmark::RunBenchmark<
-      parallel_euler_tour_tree::EulerTourTree>(argc, argv);
+      parallel_euler_tour_tree::EulerTourTree<int>>(argc, argv);
   return 0;
 }

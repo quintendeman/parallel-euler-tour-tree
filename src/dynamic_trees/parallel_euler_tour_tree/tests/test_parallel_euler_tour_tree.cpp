@@ -9,7 +9,7 @@
 #include <utilities/include/debug.hpp>
 #include <utilities/include/hash_pair.hpp>
 
-using EulerTourTree = parallel_euler_tour_tree::EulerTourTree;
+using EulerTourTree = parallel_euler_tour_tree::EulerTourTree<int>;
 
 constexpr int num_vertices{500};
 constexpr int link_attempts_per_round{400};

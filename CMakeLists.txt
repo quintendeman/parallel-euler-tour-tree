@@ -45,9 +45,7 @@ target_include_directories(augmented_skip_list_tests PRIVATE src)
 add_executable(euler_tour_tree_tests
   src/dynamic_trees/parallel_euler_tour_tree/tests/test_parallel_euler_tour_tree.cpp
   src/dynamic_trees/parallel_euler_tour_tree/tests/simple_forest_connectivity.cpp
-  src/dynamic_trees/parallel_euler_tour_tree/src/euler_tour_tree.cpp
   src/sequence/parallel_skip_list/src/skip_list_base.cpp
-  src/dynamic_trees/parallel_euler_tour_tree/src/edge_map.cpp
 )
 target_link_libraries(euler_tour_tree_tests PRIVATE parlay)
 target_include_directories(euler_tour_tree_tests PRIVATE src)
@@ -61,9 +59,7 @@ target_include_directories(benchmark_skip_list PRIVATE src)
 
 add_executable(benchmark_euler_tour_tree
   src/dynamic_trees/benchmarks/parallel_ett/benchmark_dynamic_trees_parallel_ett.cpp
-  src/dynamic_trees/parallel_euler_tour_tree/src/euler_tour_tree.cpp
   src/sequence/parallel_skip_list/src/skip_list_base.cpp
-  src/dynamic_trees/parallel_euler_tour_tree/src/edge_map.cpp
 )
 target_link_libraries(benchmark_euler_tour_tree PRIVATE parlay)
 target_include_directories(benchmark_euler_tour_tree PRIVATE src)

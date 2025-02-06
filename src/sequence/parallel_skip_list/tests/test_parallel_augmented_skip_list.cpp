@@ -11,7 +11,6 @@ using Element = parallel_skip_list::AugmentedElement;
 typedef pair<Element*, Element*> ElementPPair;
 
 constexpr int NumElements{1000};
-parlay::sequence<Element> elements;
 
 bool split_points[NumElements];
 int start_index_of_list[NumElements];
@@ -30,7 +29,7 @@ void PrimeSieve() {
   }
 }
 
-int NaiveGetSize(int idx) {
+int NaiveGetSize(int idx, parlay::sequence<Element>& elements) {
   int size{1};
   Element* curr{elements[idx].GetPreviousElement()};
   while (curr != nullptr && curr != &elements[idx]) {
@@ -47,8 +46,8 @@ int NaiveGetSize(int idx) {
   return size;
 }
 
-void CheckListSize(int idx) {
-  const int true_size{NaiveGetSize(idx)};
+void CheckListSize(int idx, parlay::sequence<Element>& elements) {
+  const int true_size{NaiveGetSize(idx, elements)};
   const int get_size{elements[idx].GetSum()};
   if (true_size != get_size) TRACE(idx _ true_size _ get_size);
   assert(true_size == get_size);
@@ -57,7 +56,7 @@ void CheckListSize(int idx) {
 int main() {
   Element::Initialize();
   pbbs::random r;
-  elements = parlay::sequence<Element>::from_function(NumElements, [&] (size_t i) {
+  parlay::sequence<Element> elements = parlay::sequence<Element>::from_function(NumElements, [&] (size_t i) {
     return r.ith_rand(i);
   });
 
@@ -78,7 +77,7 @@ int main() {
     for (int j = i + 1; j < NumElements; j++) {
       assert(representative_i != elements[j].FindRepresentative());
     }
-    CheckListSize(i);
+    CheckListSize(i, elements);
   });
 
   ElementPPair* joins{pbbs::new_array_no_init<ElementPPair>(NumElements)};
@@ -93,7 +92,7 @@ int main() {
   Element* representative_0{elements[0].FindRepresentative()};
   parallel_for (0, NumElements, [&] (size_t i) {
     assert(representative_0 == elements[i].FindRepresentative());
-    CheckListSize(i);
+    CheckListSize(i, elements);
   });
 
   // Join into one big cycle
@@ -103,7 +102,7 @@ int main() {
   representative_0 = elements[0].FindRepresentative();
   parallel_for (0, NumElements, [&] (size_t i) {
     assert(representative_0 == elements[i].FindRepresentative());
-    CheckListSize(i);
+    CheckListSize(i, elements);
   });
 
   // Split into lists
@@ -123,7 +122,7 @@ int main() {
       assert(elements[start - 1].FindRepresentative() !=
           elements[i].FindRepresentative());
     }
-    CheckListSize(i);
+    CheckListSize(i, elements);
   });
 
   // Join individual lists into individual cycles
@@ -143,7 +142,7 @@ int main() {
       assert(elements[start - 1].FindRepresentative() !=
           elements[i].FindRepresentative());
     }
-    CheckListSize(i);
+    CheckListSize(i, elements);
   });
 
   // Break cycles back into lists
@@ -161,7 +160,7 @@ int main() {
   representative_0 = elements[0].FindRepresentative();
   parallel_for (0, NumElements, [&] (size_t i) {
     assert(representative_0 == elements[i].FindRepresentative());
-    CheckListSize(i);
+    CheckListSize(i, elements);
   });
 
   pbbs::delete_array(joins, NumElements);

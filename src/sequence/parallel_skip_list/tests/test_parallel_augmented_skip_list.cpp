@@ -7,7 +7,7 @@
 
 using std::make_pair;
 using std::pair;
-using Element = parallel_skip_list::AugmentedElement;
+using Element = parallel_skip_list::AugmentedElement<int>;
 typedef pair<Element*, Element*> ElementPPair;
 
 constexpr int NumElements{1000};
@@ -55,6 +55,8 @@ void CheckListSize(int idx, parlay::sequence<Element>& elements) {
 
 int main() {
   Element::Initialize();
+  Element::aggregate_function = [&] (int x, int y) { return x + y; };
+  Element::default_value = 1;
   pbbs::random r;
   parlay::sequence<Element> elements = parlay::sequence<Element>::from_function(NumElements, [&] (size_t i) {
     return r.ith_rand(i);

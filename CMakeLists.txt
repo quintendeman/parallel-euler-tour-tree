@@ -38,7 +38,6 @@ target_include_directories(skip_list_tests PRIVATE src)
 add_executable(augmented_skip_list_tests
   src/sequence/parallel_skip_list/tests/test_parallel_augmented_skip_list.cpp
   src/sequence/parallel_skip_list/src/skip_list_base.cpp
-  src/sequence/parallel_skip_list/src/augmented_skip_list.cpp
 )
 target_link_libraries(augmented_skip_list_tests PRIVATE parlay)
 target_include_directories(augmented_skip_list_tests PRIVATE src)

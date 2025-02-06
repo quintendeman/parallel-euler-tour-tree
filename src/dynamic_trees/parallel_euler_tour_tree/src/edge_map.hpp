@@ -1,10 +1,11 @@
 #pragma once
 
 #include <utility>
+#include <parlay/parallel.h>
+#include <parlay/alloc.h>
 
 #include <utilities/include/concurrentMap.h>
 #include <utilities/include/hash_pair.hpp>
-#include <utilities/include/list_allocator.h>
 #include <dynamic_trees/parallel_euler_tour_tree/src/euler_tour_sequence.hpp>
 
 namespace parallel_euler_tour_tree {
@@ -28,7 +29,7 @@ class EdgeMap {
 
   // Deallocate all elements held in the map. This assumes that all elements
   // in the map were allocated through `allocator`.
-  void FreeElements(list_allocator<Element>* allocator);
+  void FreeElements(parlay::type_allocator<Element>* allocator);
 
  private:
   concurrent_map::concurrentHT<

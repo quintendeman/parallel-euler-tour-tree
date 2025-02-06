@@ -11,13 +11,15 @@
 #include <dynamic_trees/parallel_euler_tour_tree/include/euler_tour_tree.hpp>
 
 #include <utility>
+#include <parlay/parallel.h>
+#include <parlay/alloc.h>
 
 #include <sequence/parallel_skip_list/include/skip_list_base.hpp>
-#include <utilities/include/blockRadixSort.h>
-#include <utilities/include/list_allocator.h>
 #include <utilities/include/seq.h>
 #include <utilities/include/sequence_ops.h>
 #include <utilities/include/utils.h>
+
+using namespace parlay;
 
 namespace parallel_euler_tour_tree {
 
@@ -30,8 +32,7 @@ namespace {
   // on them later.
   constexpr int kBatchCutRecursiveFactor{100};
 
-  // Note: we never call `finish()` on this.
-  list_allocator<_internal::Element> allocator{};
+  parlay::type_allocator<_internal::Element> allocator{};
 
   void BatchCutSequential(EulerTourTree* ett, pair<int, int>* cuts, int len) {
     for (int i = 0; i < len; i++) {
@@ -49,14 +50,13 @@ namespace {
 
 EulerTourTree::EulerTourTree(int num_vertices)
     : num_vertices_{num_vertices} , edges_{num_vertices_} , randomness_{} {
-  allocator.init();
   Element::Initialize();
   vertices_ = pbbs::new_array_no_init<Element>(num_vertices_);
-  parallel_for (int i = 0; i < num_vertices_; i++) {
+  parallel_for (0, num_vertices_, [&] (size_t i) {
     new (&vertices_[i]) Element{randomness_.ith_rand(i)};
     // The Euler tour on a vertex v (a singleton tree) is simply (v, v).
     Element::Join(&vertices_[i], &vertices_[i]);
-  }
+  });
   randomness_ = randomness_.next();
 }
 
@@ -104,17 +104,15 @@ void EulerTourTree::BatchLink(pair<int, int>* links, int len) {
   // If x has new neighbors y_1, y_2, ..., y_k, join (x, x) to (x, y_1). Join
   // (y_i,x) to (x, y_{i+1}) for each i < k. Join (y_k, x) to succ(x).
 
-  pair<int, int>* links_both_dirs{
-      pbbs::new_array_no_init<pair<int, int>>(2 * len)};
-  parallel_for (int i = 0; i < len; i++) {
+  parlay::sequence<pair<uint32_t,uint32_t>> links_both_dirs(2*len);
+  parallel_for (0, len, [&] (size_t i) {
     links_both_dirs[2 * i] = links[i];
     links_both_dirs[2 * i + 1] = make_pair(links[i].second, links[i].first);
-  }
-  intSort::iSort(
-      links_both_dirs, 2 * len, num_vertices_ + 1, firstF<int, int>());
+  });
+  parlay::integer_sort_inplace(links_both_dirs, [&] (pair<uint32_t,uint32_t> p) { return p.first; });
 
   Element** split_successors{pbbs::new_array_no_init<Element*>(2 * len)};
-  parallel_for (uint64_t i = 0; i < 2 * len; i++) {
+  parallel_for (0, 2*len, [&] (size_t i) {
     int u, v;
     std::tie(u, v) = links_both_dirs[i];
 
@@ -133,10 +131,10 @@ void EulerTourTree::BatchLink(pair<int, int>* links, int len) {
       vu->twin_ = uv;
       edges_.Insert(u, v, uv);
     }
-  }
+  });
   randomness_ = randomness_.next();
 
-  parallel_for (int i = 0; i < 2 * len; i++) {
+  parallel_for (0, 2*len, [&] (size_t i) {
     int u, v;
     std::tie(u, v) = links_both_dirs[i];
     Element* uv{edges_.Find(u, v)};
@@ -153,9 +151,8 @@ void EulerTourTree::BatchLink(pair<int, int>* links, int len) {
       std::tie(u2, v2) = links_both_dirs[i + 1];
       Element::Join(vu, edges_.Find(u2, v2));
     }
-  }
+  });
 
-  pbbs::delete_array(links_both_dirs, 2 * len);
   pbbs::delete_array(split_successors, 2 * len);
 }
 
@@ -209,7 +206,7 @@ void EulerTourTree::BatchCutRecurse(pair<int, int>* cuts, int len,
   // unignored cuts as described above, and recurse on the ignored cuts
   // afterwards.
 
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     ignored[i] = randomness_.ith_rand(i) % kBatchCutRecursiveFactor == 0;
 
     if (!ignored[i]) {
@@ -220,10 +217,10 @@ void EulerTourTree::BatchCutRecurse(pair<int, int>* cuts, int len,
       Element* vu{uv->twin_};
       uv->split_mark_ = vu->split_mark_ = true;
     }
-  }
+  });
   randomness_ = randomness_.next();
 
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     if (!ignored[i]) {
       Element* uv{edge_elements[i]};
       Element* vu{uv->twin_};
@@ -252,9 +249,9 @@ void EulerTourTree::BatchCutRecurse(pair<int, int>* cuts, int len,
         join_targets[4 * i + 3] = right_target;
       }
     }
-  }
+  });
 
-  parallel_for (int i = 0; i < len; i++) {
+  parallel_for (0, len, [&] (size_t i) {
     if (!ignored[i]) {
       Element* uv{edge_elements[i]};
       Element* vu{uv->twin_};
@@ -269,9 +266,9 @@ void EulerTourTree::BatchCutRecurse(pair<int, int>* cuts, int len,
         predecessor->Split();
       }
     }
-  }
+  });
 
-  parallel_for (int i = 0; i < len; i++)  {
+  parallel_for (0, len, [&] (size_t i) {
     if (!ignored[i]) {
       // Here we must use `edge_elements[i]` instead of `edges_.Find(u, v)`
       // because the concurrent hash table cannot handle simultaneous lookups
@@ -293,7 +290,7 @@ void EulerTourTree::BatchCutRecurse(pair<int, int>* cuts, int len,
         Element::Join(join_targets[4 * i + 2], join_targets[4 * i + 3]);
       }
     }
-  }
+  });
 
   seq::sequence<pair<int, int>> cuts_seq{
       seq::sequence<pair<int, int>>(cuts, len)};

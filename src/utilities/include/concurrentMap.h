@@ -30,7 +30,9 @@ public:
   size_t mask;
 
   inline void clearA(KV* v, size_t n, K emp_key) {
-    granular_for(i, 0, n, (n > 2000), { get<0>(v[i]) = emp_key; });
+    parlay::parallel_for(0, n, [&] (size_t i) {
+      get<0>(v[i]) = emp_key;
+    });
   }
 
   inline size_t toRange(size_t h) const {return h & mask;}

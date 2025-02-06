@@ -2,6 +2,8 @@
 
 #include <utility>
 
+using namespace parlay;
+
 namespace parallel_euler_tour_tree {
 
 namespace _internal {
@@ -38,8 +40,8 @@ Element* EdgeMap::Find(int u, int v) {
   }
 }
 
-void EdgeMap::FreeElements(list_allocator<Element>* allocator) {
-  parallel_for (size_t i = 0; i < map_.capacity; i++) {
+void EdgeMap::FreeElements(parlay::type_allocator<Element>* allocator) {
+  parallel_for (0, map_.capacity, [&] (size_t i) {
     auto kv{map_.table[i]};
     auto key{get<0>(kv)};
     if (key != map_.empty_key && key != map_.tombstone) {
@@ -49,7 +51,7 @@ void EdgeMap::FreeElements(list_allocator<Element>* allocator) {
       element->~Element();
       allocator->free(element);
     }
-  }
+  });
 }
 
 }  // namespace _internal

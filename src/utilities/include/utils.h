@@ -76,6 +76,9 @@ typedef unsigned int uintE;
 
 #define newA(__E,__n) (__E*) malloc((__n)*sizeof(__E))
 
+template <class E1, class E2>
+struct firstF {E1 operator() (std::pair<E1,E2> a) {return a.first;} };
+
 template <class E>
 struct identityF { E operator() (const E& x) {return x;}};
 

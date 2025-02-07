@@ -44,7 +44,7 @@ using Element = _internal::Element<T>;
   void Update(int v, T new_value);
   // Update the augmented value of vertex `v` and each node that aggregates it by
   // applying the function `f` on the value of each node.
-  void UpdateWithFunction(int v, std::function<T(T)> f);
+  void UpdateWithFunction(int v, std::function<void(T&)> f);
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
@@ -376,7 +376,7 @@ void EulerTourTree<T>::Update(int v, T new_value) {
 }
 
 template<typename T>
-void EulerTourTree<T>::UpdateWithFunction(int v, std::function<T(T)> f) {
+void EulerTourTree<T>::UpdateWithFunction(int v, std::function<void(T&)> f) {
   Element::UpdateWithFunction(vertices_[v], f);
 }
 

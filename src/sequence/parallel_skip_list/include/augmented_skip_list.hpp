@@ -64,7 +64,7 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   // Assign value `new_value` to element `element`.
   static void Update(AugmentedElement* element, T new_value, int level = 0);
 
-  static void UpdateWithFunction(AugmentedElement* element, std::function<T(T)> f, int level = 0); 
+  static void UpdateWithFunction(AugmentedElement* element, std::function<void(T&)> f, int level = 0); 
 
   // Get the result of applying the augmentation function over the subsequence
   // between `left` and `right` inclusive.
@@ -288,8 +288,8 @@ void AugmentedElement<T>::Update(AugmentedElement* element, T new_value, int lev
 }
 
 template<typename T>
-void AugmentedElement<T>::UpdateWithFunction(AugmentedElement* element, std::function<T(T)> f, int level) {
-  element->values_[level] = f(element->values_[level]);
+void AugmentedElement<T>::UpdateWithFunction(AugmentedElement* element, std::function<void(T&)> f, int level) {
+  f(element->values_[level]);
   AugmentedElement* parent{element->FindLeftParent(level)};
   Update(parent, f, level+1);
 }

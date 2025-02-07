@@ -32,7 +32,8 @@ add_library(ParETT INTERFACE)
 include(GNUInstallDirs)
 set(PARETT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(ParETT INTERFACE
-  "$<BUILD_INTERFACE:${PARETT_INCLUDE_DIR}>"
+  $<BUILD_INTERFACE:${PARETT_INCLUDE_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 add_executable(skip_list_tests

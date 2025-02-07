@@ -42,6 +42,9 @@ using Element = _internal::Element<T>;
   void Cut(int u, int v);
   // Set the value of vertex `v` to be `new_value`.
   void Update(int v, T new_value);
+  // Update the augmented value of vertex `v` and each node that aggregates it by
+  // applying the function `f` on the value of each node.
+  void UpdateWithFunction(int v, std::function<T(T)> f);
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
@@ -369,15 +372,19 @@ void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
 
 template<typename T>
 void EulerTourTree<T>::Update(int v, T new_value) {
-  Element* representative = edges_.Find(v,v);
-  Element::Update(representative, new_value);
+  Element::Update(vertices_[v], new_value);
+}
+
+template<typename T>
+void EulerTourTree<T>::UpdateWithFunction(int v, std::function<T(T)> f) {
+  Element::UpdateWithFunction(vertices_[v], f);
 }
 
 template<typename T>
 void EulerTourTree<T>::BatchUpdate(int* vertices, T* new_values, int len) {
   Element** update_targets{pbbs::new_array_no_init<Element*>(len)};
   parallel_for (0, len, [&] (size_t i) {
-    update_targets[i] = edges_.Find(vertices[i], vertices[i]);
+    update_targets[i] = vertices_[vertices[i]];
   });
   BatchUpdate(update_targets, new_values, len);
 }

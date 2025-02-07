@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(ParallelETT)
+project(ParETT)
 include (FetchContent)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -28,7 +28,12 @@ endif()
 # )
 # FetchContent_MakeAvailable(abseil-cpp)
 
-add_library(project INTERFACE)
+add_library(ParETT INTERFACE)
+include(GNUInstallDirs)
+set(PARETT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(ParETT INTERFACE
+  "$<BUILD_INTERFACE:${PARETT_INCLUDE_DIR}>"
+)
 
 add_executable(skip_list_tests
   src/sequence/parallel_skip_list/tests/test_parallel_skip_list.cpp

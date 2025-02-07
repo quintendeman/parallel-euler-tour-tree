@@ -28,12 +28,13 @@ endif()
 # )
 # FetchContent_MakeAvailable(abseil-cpp)
 
-add_library(ParETT INTERFACE)
+add_library(par-ett INTERFACE)
 include(GNUInstallDirs)
 set(PARETT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_include_directories(ParETT INTERFACE
+target_include_directories(par-ett INTERFACE
   $<BUILD_INTERFACE:${PARETT_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  src
 )
 
 add_executable(skip_list_tests

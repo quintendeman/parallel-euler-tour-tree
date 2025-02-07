@@ -74,8 +74,7 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   //
   // This function does not modify the data structure, so it may run
   // concurrently with other `GetSubsequenceSum` calls and const function calls.
-  static int GetSubsequenceSum(
-      const AugmentedElement* left, const AugmentedElement* right);
+  T GetSubsequenceSum(const AugmentedElement* left, const AugmentedElement* right);
 
   // Get result of applying the augmentation function over the whole list that
   // the element lives in.
@@ -184,7 +183,7 @@ void AugmentedElement<T>::UpdateTopDown(int level) {
 
   // Now that children have correct augmented valeus, update self's augmented
   // value.
-  int sum{values_[level - 1]};
+  T sum{values_[level - 1]};
   AugmentedElement* curr = this->neighbors_[level - 1].next;
   while (curr != nullptr && curr->height_ < level + 1) {
     sum = aggregate_function(sum, curr->values_[level-1]);
@@ -344,7 +343,7 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
 }
 
 template<typename T>
-int AugmentedElement<T>::GetSubsequenceSum(
+T AugmentedElement<T>::GetSubsequenceSum(
     const AugmentedElement* left, const AugmentedElement* right) {
   int level{0};
   T sum{right->values_[level]};

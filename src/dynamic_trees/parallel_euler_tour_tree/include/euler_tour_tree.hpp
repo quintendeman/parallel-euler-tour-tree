@@ -64,9 +64,10 @@ using Element = _internal::Element<T>;
       _internal::Element<T>** edge_elements);
 
   int num_vertices_;
+  pbbs::random randomness_;
+ public:
   _internal::Element<T>* vertices_;
   _internal::EdgeMap<T> edges_;
-  pbbs::random randomness_;
 };
 
 template<typename T>

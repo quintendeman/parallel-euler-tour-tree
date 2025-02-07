@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include <dynamic_trees/parallel_euler_tour_tree/src/edge_map.hpp>
-#include <dynamic_trees/parallel_euler_tour_tree/src/euler_tour_sequence.hpp>
+#include <dynamic_trees/parallel_euler_tour_tree/include/edge_map.hpp>
+#include <dynamic_trees/parallel_euler_tour_tree/include/euler_tour_sequence.hpp>
 #include <sequence/parallel_skip_list/include/skip_list_base.hpp>
 #include <utilities/include/random.h>
 #include <utilities/include/seq.h>

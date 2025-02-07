@@ -6,7 +6,7 @@
 
 #include <utilities/include/concurrentMap.h>
 #include <utilities/include/hash_pair.hpp>
-#include <dynamic_trees/parallel_euler_tour_tree/src/euler_tour_sequence.hpp>
+#include <dynamic_trees/parallel_euler_tour_tree/include/euler_tour_sequence.hpp>
 
 namespace parallel_euler_tour_tree {
 

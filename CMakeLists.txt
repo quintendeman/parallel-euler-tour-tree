@@ -30,14 +30,12 @@ endif()
 
 add_executable(skip_list_tests
   src/sequence/parallel_skip_list/tests/test_parallel_skip_list.cpp
-  src/sequence/parallel_skip_list/src/skip_list_base.cpp
 )
 target_link_libraries(skip_list_tests PRIVATE parlay)
 target_include_directories(skip_list_tests PRIVATE src)
 
 add_executable(augmented_skip_list_tests
   src/sequence/parallel_skip_list/tests/test_parallel_augmented_skip_list.cpp
-  src/sequence/parallel_skip_list/src/skip_list_base.cpp
 )
 target_link_libraries(augmented_skip_list_tests PRIVATE parlay)
 target_include_directories(augmented_skip_list_tests PRIVATE src)
@@ -45,21 +43,18 @@ target_include_directories(augmented_skip_list_tests PRIVATE src)
 add_executable(euler_tour_tree_tests
   src/dynamic_trees/parallel_euler_tour_tree/tests/test_parallel_euler_tour_tree.cpp
   src/dynamic_trees/parallel_euler_tour_tree/tests/simple_forest_connectivity.cpp
-  src/sequence/parallel_skip_list/src/skip_list_base.cpp
 )
 target_link_libraries(euler_tour_tree_tests PRIVATE parlay)
 target_include_directories(euler_tour_tree_tests PRIVATE src)
 
 add_executable(benchmark_skip_list
   src/sequence/benchmarks/batch_sequence_benchmark/parallel_augmented_skip_list/benchmark_batch_sequence_parallel_augmented_skip_list.cpp
-  src/sequence/parallel_skip_list/src/skip_list_base.cpp
 )
 target_link_libraries(benchmark_skip_list PRIVATE parlay)
 target_include_directories(benchmark_skip_list PRIVATE src)
 
 add_executable(benchmark_euler_tour_tree
   src/dynamic_trees/benchmarks/parallel_ett/benchmark_dynamic_trees_parallel_ett.cpp
-  src/sequence/parallel_skip_list/src/skip_list_base.cpp
 )
 target_link_libraries(benchmark_euler_tour_tree PRIVATE parlay)
 target_include_directories(benchmark_euler_tour_tree PRIVATE src)

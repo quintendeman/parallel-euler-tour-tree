@@ -28,6 +28,8 @@ endif()
 # )
 # FetchContent_MakeAvailable(abseil-cpp)
 
+add_library(project INTERFACE)
+
 add_executable(skip_list_tests
   src/sequence/parallel_skip_list/tests/test_parallel_skip_list.cpp
 )

@@ -372,12 +372,12 @@ void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
 
 template<typename T>
 void EulerTourTree<T>::Update(int v, T new_value) {
-  Element::Update(vertices_[v], new_value);
+  Element::Update(&vertices_[v], new_value);
 }
 
 template<typename T>
 void EulerTourTree<T>::UpdateWithFunction(int v, std::function<void(T&)> f) {
-  Element::UpdateWithFunction(vertices_[v], f);
+  Element::UpdateWithFunction(&vertices_[v], f);
 }
 
 template<typename T>

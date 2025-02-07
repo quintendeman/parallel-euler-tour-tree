@@ -152,7 +152,7 @@ void AugmentedElement<T>::UpdateTopDownSequential(int level) {
   if (update_level_ < level) {
     UpdateTopDownSequential(level - 1);
   }
-  int sum{values_[level - 1]};
+  T sum{values_[level - 1]};
   AugmentedElement* curr{this->neighbors_[level - 1].next};
   while (curr != nullptr && curr->height_ < level + 1) {
     if (curr->update_level_ != NA && curr->update_level_ < level) {
@@ -278,7 +278,7 @@ template<typename T>
 void AugmentedElement<T>::Update(AugmentedElement* element, T new_value, int level) {
   element->values_[level] = new_value;
   AugmentedElement* parent{element->FindLeftParent(level)};
-  int sum{parent->values_[level]};
+  T sum{parent->values_[level]};
   AugmentedElement* curr{parent->neighbors_[level].next};
   while (curr != nullptr && curr->height_ == level+1) {
     sum = aggregate_function(sum, curr->values_[level]);
@@ -321,7 +321,7 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
         curr->update_level_ == NA && CAS(&curr->update_level_, NA, 0)};
     if (can_proceed) {
       // Update values of `curr`'s ancestors.
-      int sum{curr->values_[0]};
+      T sum{curr->values_[0]};
       int level{0};
       while (true) {
         if (level < curr->height_ - 1) {
@@ -332,7 +332,7 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
           if (curr == nullptr) {
             break;
           } else {
-            sum += curr->values_[level];
+            sum = aggregate_function(sum, curr->values_[level]);
           }
         }
       }
@@ -347,15 +347,15 @@ template<typename T>
 int AugmentedElement<T>::GetSubsequenceSum(
     const AugmentedElement* left, const AugmentedElement* right) {
   int level{0};
-  int sum{right->values_[level]};
+  T sum{right->values_[level]};
   while (left != right) {
     level = min(left->height_, right->height_) - 1;
     if (level == left->height_ - 1) {
-      sum += left->values_[level];
+      sum = aggregate_function(sum, left->values_[level]);
       left = left->neighbors_[level].next;
     } else {
       right = right->neighbors_[level].prev;
-      sum += right->values_[level];
+      sum = aggregate_function(sum, right->values_[level]);
     }
   }
   return sum;
@@ -369,10 +369,10 @@ T AugmentedElement<T>::GetSum() const {
   AugmentedElement* root{FindRepresentative()};
   // Sum the values across the top level of the list.
   int level{root->height_ - 1};
-  int sum{root->values_[level]};
+  T sum{root->values_[level]};
   AugmentedElement* curr{root->neighbors_[level].next};
   while (curr != nullptr && curr != root) {
-    sum += curr->values_[level];
+    sum = aggregate_function(sum, curr->values_[level]);
     curr = curr->neighbors_[level].next;
   }
   if (curr == nullptr) {
@@ -388,7 +388,7 @@ T AugmentedElement<T>::GetSum() const {
       }
       while (curr->neighbors_[level].prev != nullptr) {
         curr = curr->neighbors_[level].prev;
-        sum += curr->values_[level];
+        sum = aggregate_function(sum, curr->values_[level]);
       }
     }
   }

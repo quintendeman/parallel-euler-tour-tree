@@ -110,7 +110,7 @@ T AugmentedElement<T>::default_value;
 template<typename T>
 void AugmentedElement<T>::DerivedInitialize() {
   if (val_allocator == nullptr) {
-    val_allocator = new concurrent_array_allocator::Allocator<int>;
+    val_allocator = new concurrent_array_allocator::Allocator<T>;
   }
 }
 

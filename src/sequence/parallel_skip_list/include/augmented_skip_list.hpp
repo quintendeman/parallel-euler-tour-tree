@@ -59,8 +59,10 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
 
   // For each `i`=0,1,...,`len`-1, assign value `new_values[i]` to element
   // `elements[i]`.
-  static void BatchUpdate(
-      AugmentedElement** elements, T* new_values, int len);
+  static void BatchUpdate(AugmentedElement** elements, T* new_values, int len);
+
+  // Assign value `new_value` to element `element`.
+  static void Update(AugmentedElement* element, T new_value, int level = 0);
 
   // Get the result of applying the augmentation function over the subsequence
   // between `left` and `right` inclusive.
@@ -268,6 +270,19 @@ void AugmentedElement<T>::BatchUpdate(
   });
 
   pbbs::delete_array(top_nodes, len);
+}
+
+template<typename T>
+void AugmentedElement<T>::Update(AugmentedElement* element, T new_value, int level) {
+  element->values_[level] = new_value;
+  AugmentedElement* parent{element->FindLeftParent(level)};
+  int sum{parent->values_[level]};
+  AugmentedElement* curr{parent->neighbors_[level].next};
+  while (curr != nullptr && curr->height_ == level+1) {
+    sum = aggregate_function(sum, curr->values_[level]);
+    curr = curr->neighbors_[level].next;
+  }
+  Update(parent, sum, level+1);
 }
 
 template<typename T>

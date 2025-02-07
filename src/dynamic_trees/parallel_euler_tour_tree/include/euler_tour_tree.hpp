@@ -370,7 +370,7 @@ void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
 template<typename T>
 void EulerTourTree<T>::Update(int v, T new_value) {
   Element* representative = edges_.Find(v,v);
-  BatchUpdate(&representative, &new_value, 1);
+  Element::Update(representative, new_value);
 }
 
 template<typename T>

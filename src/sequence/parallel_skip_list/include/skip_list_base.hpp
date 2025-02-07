@@ -92,6 +92,7 @@ class ElementBase {
   static concurrent_array_allocator::Allocator<Neighbors>* neighbor_allocator_;
   static pbbs::random default_randomness_;
 
+public:
   // neighbors_[i] holds neighbors at level i, where level 0 is the lowest level
   // and is the level at which the list contains all elements
   Neighbors* neighbors_;

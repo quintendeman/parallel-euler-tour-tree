@@ -45,6 +45,8 @@ using Element = _internal::Element<T>;
   // Update the augmented value of vertex `v` and each node that aggregates it by
   // applying the function `f` on the value of each node.
   void UpdateWithFunction(int v, std::function<void(T&)> f);
+  // Return the value associated with element `v`.
+  T GetValue(int v);
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
@@ -387,6 +389,11 @@ void EulerTourTree<T>::BatchUpdate(int* vertices, T* new_values, int len) {
     update_targets[i] = vertices_[vertices[i]];
   });
   BatchUpdate(update_targets, new_values, len);
+}
+
+template<typename T>
+T EulerTourTree<T>::GetValue(int v) {
+  return vertices_[v].values_[0];
 }
 
 }  // namespace parallel_euler_tour_tree

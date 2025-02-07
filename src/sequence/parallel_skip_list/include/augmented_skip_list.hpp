@@ -93,10 +93,12 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   void UpdateTopDownHelper(int level, AugmentedElement* curr);
   void UpdateTopDownSequential(int level);
 
-  T* values_;
   // When updating augmented values, this marks the lowest index at which the
   // `values_` needs to be updated.
   int update_level_;
+
+public:
+  T* values_;
 };
 
 template<typename T>

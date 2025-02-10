@@ -33,7 +33,6 @@ using Element = _internal::Element<T>;
   // in the map were allocated through `allocator`.
   void FreeElements(parlay::type_allocator<Element>* allocator);
 
- private:
   concurrent_map::concurrentHT<
       std::pair<int, int>, Element*, HashIntPairStruct> map_;
 };

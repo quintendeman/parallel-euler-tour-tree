@@ -292,7 +292,7 @@ template<typename T>
 void AugmentedElement<T>::UpdateWithFunction(AugmentedElement* element, std::function<void(T&)> f, int level) {
   f(element->values_[level]);
   AugmentedElement* parent{element->FindLeftParent(level)};
-  Update(parent, f, level+1);
+  if (parent) Update(parent, f, level+1);
 }
 
 template<typename T>

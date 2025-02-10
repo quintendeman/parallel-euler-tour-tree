@@ -324,7 +324,6 @@ void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElemen
     right = right->FindRightParent(level);
     level++;
   }
-  Update(original_left, original_left->values_[0]);
 }
 
 template<typename T>
@@ -376,7 +375,6 @@ AugmentedElement<T>* AugmentedElement<T>::SequentialSplit() {
     current_element = current_element->FindLeftParent(level);
     level++;
   }
-  Update(this, this->values_[0]);
   return successor;
 }
 

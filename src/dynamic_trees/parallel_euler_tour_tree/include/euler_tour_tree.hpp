@@ -135,14 +135,12 @@ void EulerTourTree<T>::Link(int u, int v) {
   edges_.Insert(u, v, uv);
   Element* u_left{&vertices_[u]};
   Element* v_left{&vertices_[v]};
-  Element* u_right = (Element*) u_left->SequentialSplit();
-  Element* v_right = (Element*) v_left->SequentialSplit();
+  Element* u_right = (Element*) u_left->SequentialSplitRight();
+  Element* v_right = (Element*) v_left->SequentialSplitRight();
   Element::SequentialJoin(u_left, uv);
   Element::SequentialJoin(uv, v_right);
   Element::SequentialJoin(v_left, vu);
   Element::SequentialJoin(vu, u_right);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
 }
 
 template<typename T>
@@ -157,14 +155,12 @@ void EulerTourTree<T>::Link2(int u, int v) {
   edges_.Insert(u, v, uv);
   Element* u_left{vertices_[u].GetPreviousElement()};
   Element* v_left{vertices_[v].GetPreviousElement()};
-  Element* u_right = (Element*) u_left->SequentialSplit();
-  Element* v_right = (Element*) v_left->SequentialSplit();
+  Element* u_right = (Element*) u_left->SequentialSplitLeft();
+  Element* v_right = (Element*) v_left->SequentialSplitLeft();
   Element::SequentialJoin(u_left, uv);
   Element::SequentialJoin(uv, v_right);
   Element::SequentialJoin(v_left, vu);
   Element::SequentialJoin(vu, u_right);
-  Element::Update(u_right, u_right->values_[0]);
-  Element::Update(v_right, v_right->values_[0]);
 }
 
 template<typename T>
@@ -242,10 +238,10 @@ void EulerTourTree<T>::Cut(int u, int v) {
   edges_.Delete(u, v);
   Element* u_left = (Element*) uv->GetPreviousElement();
   Element* v_left = (Element*) vu->GetPreviousElement();
-  Element* v_right = (Element*) uv->SequentialSplit();
-  Element* u_right = (Element*) vu->SequentialSplit();
-  u_left->SequentialSplit();
-  v_left->SequentialSplit();
+  Element* v_right = (Element*) uv->SequentialSplitRight();
+  Element* u_right = (Element*) vu->SequentialSplitRight();
+  u_left->SequentialSplitRight();
+  v_left->SequentialSplitRight();
   uv->~Element();
   allocator.free(uv);
   vu->~Element();

@@ -59,7 +59,8 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   // after `v`.
   static void BatchSplit(AugmentedElement** splits, int len);
 
-  AugmentedElement* SequentialSplit();
+  AugmentedElement* SequentialSplitRight();
+  AugmentedElement* SequentialSplitLeft();
 
   // For each `i`=0,1,...,`len`-1, assign value `new_values[i]` to element
   // `elements[i]`.
@@ -316,6 +317,7 @@ void AugmentedElement<T>::BatchJoin(
 template<typename T>
 void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElement* right) {
   AugmentedElement* original_left = left;
+  AugmentedElement* original_right = right;
   int level{0};
   while (left != nullptr && right != nullptr) {
     left->neighbors_[level].next = right;
@@ -324,6 +326,8 @@ void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElemen
     right = right->FindRightParent(level);
     level++;
   }
+  Update(original_left, original_left->values_[0]);
+  Update(original_right, original_right->values_[0]);
 }
 
 template<typename T>
@@ -363,7 +367,7 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
 }
 
 template<typename T>
-AugmentedElement<T>* AugmentedElement<T>::SequentialSplit() {
+AugmentedElement<T>* AugmentedElement<T>::SequentialSplitRight() {
   AugmentedElement* successor = GetNextElement();
   AugmentedElement* current_element{static_cast<AugmentedElement*>(this)};
   int level{0};
@@ -375,7 +379,25 @@ AugmentedElement<T>* AugmentedElement<T>::SequentialSplit() {
     current_element = current_element->FindLeftParent(level);
     level++;
   }
+  Update(this, this->values_[0]);
   return successor;
+}
+
+template<typename T>
+AugmentedElement<T>* AugmentedElement<T>::SequentialSplitLeft() {
+  AugmentedElement* predecessor = GetPreviousElement();
+  AugmentedElement* current_element{static_cast<AugmentedElement*>(this)};
+  int level{0};
+  while (current_element != nullptr) {
+    AugmentedElement* prev{current_element->neighbors_[level].prev};
+    if (prev == nullptr) break;
+    current_element->neighbors_[level].prev = nullptr;
+    prev->neighbors_[level].next = nullptr;
+    current_element = current_element->FindRightParent(level);
+    level++;
+  }
+  Update(this, this->values_[0]);
+  return predecessor;
 }
 
 template<typename T>

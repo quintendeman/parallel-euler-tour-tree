@@ -153,8 +153,8 @@ void EulerTourTree<T>::Link2(int u, int v) {
   uv->twin_ = vu;
   vu->twin_ = uv;
   edges_.Insert(u, v, uv);
-  Element* u_right{vertices_[u]};
-  Element* v_right{vertices_[v]};
+  Element* u_right{&vertices_[u]};
+  Element* v_right{&vertices_[v]};
   Element* u_left = (Element*) u_right->SequentialSplitLeft();
   Element* v_left = (Element*) v_right->SequentialSplitLeft();
   Element::SequentialJoin(u_left, uv);

@@ -283,6 +283,7 @@ template<typename T>
 void AugmentedElement<T>::Update(AugmentedElement* element, T new_value, int level) {
   element->values_[level] = new_value;
   AugmentedElement* parent{element->FindLeftParent(level)};
+  if (!parent) return;
   T sum{parent->values_[level]};
   AugmentedElement* curr{parent->neighbors_[level].next};
   while (curr != nullptr && curr->height_ == level+1) {
@@ -314,6 +315,7 @@ void AugmentedElement<T>::BatchJoin(
 
 template<typename T>
 void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElement* right) {
+  AugmentedElement* original_left = left;
   int level{0};
   while (left != nullptr && right != nullptr) {
     left->neighbors_[level].next = right;
@@ -322,7 +324,7 @@ void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElemen
     right = right->FindRightParent(level);
     level++;
   }
-  Update(left, left->values_[0]);
+  Update(original_left, original_left->values_[0]);
 }
 
 template<typename T>

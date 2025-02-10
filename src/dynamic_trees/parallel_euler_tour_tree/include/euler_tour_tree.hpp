@@ -134,12 +134,12 @@ void EulerTourTree<T>::Link(int u, int v) {
   edges_.Insert(u, v, uv);
   Element* u_left{&vertices_[u]};
   Element* v_left{&vertices_[v]};
-  Element* u_right = (Element*) u_left->Split();
-  Element* v_right = (Element*) v_left->Split();
-  Element::Join(u_left, uv);
-  Element::Join(uv, v_right);
-  Element::Join(v_left, vu);
-  Element::Join(vu, u_right);
+  Element* u_right = (Element*) u_left->SequentialSplit();
+  Element* v_right = (Element*) v_left->SequentialSplit();
+  Element::SequentialJoin(u_left, uv);
+  Element::SequentialJoin(uv, v_right);
+  Element::SequentialJoin(v_left, vu);
+  Element::SequentialJoin(vu, u_right);
 }
 
 template<typename T>
@@ -217,16 +217,16 @@ void EulerTourTree<T>::Cut(int u, int v) {
   edges_.Delete(u, v);
   Element* u_left = (Element*) uv->GetPreviousElement();
   Element* v_left = (Element*) vu->GetPreviousElement();
-  Element* v_right = (Element*) uv->Split();
-  Element* u_right = (Element*) vu->Split();
-  u_left->Split();
-  v_left->Split();
+  Element* v_right = (Element*) uv->SequentialSplit();
+  Element* u_right = (Element*) vu->SequentialSplit();
+  u_left->SequentialSplit();
+  v_left->SequentialSplit();
   uv->~Element();
   allocator.free(uv);
   vu->~Element();
   allocator.free(vu);
-  Element::Join(u_left, u_right);
-  Element::Join(v_left, v_right);
+  Element::SequentialJoin(u_left, u_right);
+  Element::SequentialJoin(v_left, v_right);
 }
 
 // `ignored`, `join_targets`, and `edge_elements` are scratch space.

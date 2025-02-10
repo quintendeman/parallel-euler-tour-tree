@@ -27,6 +27,8 @@ void CheckAllPairsConnectivity(
 }
 
 int main() {
+  parallel_skip_list::AugmentedElement<int>::aggregate_function = [&] (int x, int y) { return x + y; };
+  parallel_skip_list::AugmentedElement<int>::default_value = 1;
   std::mt19937 rng{};
   rng.seed(0);
   std::uniform_int_distribution<std::mt19937::result_type>

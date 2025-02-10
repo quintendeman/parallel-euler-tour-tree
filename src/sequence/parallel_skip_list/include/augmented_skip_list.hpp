@@ -53,9 +53,13 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   static void BatchJoin(
       std::pair<AugmentedElement*, AugmentedElement*>* joins, int len);
 
+  static void SequentialJoin(AugmentedElement* left, AugmentedElement* right);
+
   // For each `v` in the `len`-length array `splits`, split `v`'s list right
   // after `v`.
   static void BatchSplit(AugmentedElement** splits, int len);
+
+  AugmentedElement* SequentialSplit();
 
   // For each `i`=0,1,...,`len`-1, assign value `new_values[i]` to element
   // `elements[i]`.
@@ -309,6 +313,19 @@ void AugmentedElement<T>::BatchJoin(
 }
 
 template<typename T>
+void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElement* right) {
+  int level{0};
+  while (left != nullptr && right != nullptr) {
+    left->neighbors_[level].next = right;
+    right->neighbors_[level].prev = left;
+    left = left->FindLeftParent(level);
+    right = right->FindRightParent(level);
+    level++;
+  }
+  Update(left, left->values_[0]);
+}
+
+template<typename T>
 void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
   parallel_for (0, len, [&] (size_t i) {
     splits[i]->Split();
@@ -342,6 +359,23 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
   parallel_for (0, len, [&] (size_t i) {
     splits[i]->update_level_ = NA;
   });
+}
+
+template<typename T>
+AugmentedElement<T>* AugmentedElement<T>::SequentialSplit() {
+  AugmentedElement* successor = GetNextElement();
+  AugmentedElement* current_element{static_cast<AugmentedElement*>(this)};
+  int level{0};
+  while (current_element != nullptr) {
+    AugmentedElement* next{current_element->neighbors_[level].next};
+    if (next == nullptr) break;
+    current_element->neighbors_[level].next = nullptr;
+    next->neighbors_[level].prev = nullptr;
+    current_element = current_element->FindLeftParent(level);
+    level++;
+  }
+  Update(this, this->values_[0]);
+  return successor;
 }
 
 template<typename T>

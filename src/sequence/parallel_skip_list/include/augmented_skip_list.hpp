@@ -74,7 +74,7 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   //
   // This function does not modify the data structure, so it may run
   // concurrently with other `GetSubsequenceSum` calls and const function calls.
-  T GetSubsequenceSum(const AugmentedElement* left, const AugmentedElement* right);
+  static T GetSubsequenceSum(const AugmentedElement* left, const AugmentedElement* right);
 
   // Get result of applying the augmentation function over the whole list that
   // the element lives in.
@@ -345,8 +345,7 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
 }
 
 template<typename T>
-T AugmentedElement<T>::GetSubsequenceSum(
-    const AugmentedElement* left, const AugmentedElement* right) {
+T AugmentedElement<T>::GetSubsequenceSum(const AugmentedElement* left, const AugmentedElement* right) {
   int level{0};
   T sum{right->values_[level]};
   while (left != right) {

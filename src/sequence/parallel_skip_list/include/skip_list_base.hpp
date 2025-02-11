@@ -140,6 +140,7 @@ template <typename Derived>
 void ElementBase<Derived>::Finish() {
   if (neighbor_allocator_ != nullptr) {
     delete neighbor_allocator_;
+    neighbor_allocator_ = nullptr;
   }
   Derived::DerivedFinish();
 }

@@ -126,6 +126,7 @@ template<typename T>
 void AugmentedElement<T>::DerivedFinish() {
   if (val_allocator != nullptr) {
     delete val_allocator;
+    val_allocator = nullptr;
   }
 }
 

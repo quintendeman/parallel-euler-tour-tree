@@ -401,6 +401,7 @@ AugmentedElement<T>* AugmentedElement<T>::SequentialSplitLeft() {
     AugmentedElement* start_element{current_element};
     do {
       if (current_element->height_ > level + 1) {
+        start_element = nullptr;
         break;
       }
       current_element->parent = nullptr;

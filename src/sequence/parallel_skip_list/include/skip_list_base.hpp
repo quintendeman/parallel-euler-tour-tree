@@ -157,6 +157,7 @@ ElementBase<Derived>::ElementBase() {
   for (int i = 0; i < height_; i++) {
     neighbors_[i].prev = neighbors_[i].next = nullptr;
   }
+  parent = nullptr;
 }
 
 template <typename Derived>
@@ -166,6 +167,7 @@ ElementBase<Derived>::ElementBase(size_t random_int) {
   for (int i = 0; i < height_; i++) {
     neighbors_[i].prev = neighbors_[i].next = nullptr;
   }
+  parent = nullptr;
 }
 
 template <typename Derived>

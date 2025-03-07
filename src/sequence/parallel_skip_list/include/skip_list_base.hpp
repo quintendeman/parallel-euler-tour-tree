@@ -268,8 +268,8 @@ Derived* ElementBase<Derived>::FindRepresentative2() const {
   const ElementBase* curr = this;
   const ElementBase* next = this->parent;
   while (next) {
-    next = next->parent;
     curr = next;
+    next = curr->parent;
   }
 
   const ElementBase* rep = curr;

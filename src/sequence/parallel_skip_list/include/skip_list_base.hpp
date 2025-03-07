@@ -54,6 +54,8 @@ class ElementBase {
   // A representative element is only valid until the next `Join` or `Split`
   // call.
   Derived* FindRepresentative() const;
+  // This one uses `parent` pointers to find the representative faster.
+  Derived* FindRepresentative2() const;
 
   // Concatenates the list that `left` lives in to the list that `right` lives
   // in. `left` must be the last element in its list. `right` must be the first
@@ -97,6 +99,7 @@ public:
   // and is the level at which the list contains all elements
   Neighbors* neighbors_;
   int height_;
+  Derived* parent;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -224,14 +227,14 @@ Derived* ElementBase<Derived>::FindRepresentative() const {
   // favor of the lowest address.
   // If the list is not cyclic, then return the head element on the highest
   // level.
-
+  
   const Derived* current_element{static_cast<const Derived*>(this)};
   const Derived* seen_element{nullptr};
   int current_level{current_element->height_ - 1};
-
+  
   // walk up while moving forward
   while (current_element->neighbors_[current_level].next != nullptr &&
-         seen_element != current_element) {
+    seen_element != current_element) {
     if (seen_element == nullptr || current_element < seen_element) {
       seen_element = current_element;
     }
@@ -242,7 +245,7 @@ Derived* ElementBase<Derived>::FindRepresentative() const {
       seen_element = nullptr;
     }
   }
-
+  
   if (seen_element == current_element) {  // list is a cycle
     return const_cast<Derived*>(seen_element);
   } else {
@@ -256,15 +259,39 @@ Derived* ElementBase<Derived>::FindRepresentative() const {
 }
 
 template <typename Derived>
+Derived* ElementBase<Derived>::FindRepresentative2() const {
+  // If the list is cyclic, return element on highest level, breaking ties in
+  // favor of the lowest address.
+  // If the list is not cyclic, then return the head element on the highest
+  // level.
+
+  const ElementBase* curr = this;
+  const ElementBase* next = this->parent;
+  while (next) {
+    next = next->parent;
+    curr = next;
+  }
+
+  const ElementBase* rep = curr;
+  int level = curr->height_-1;
+  next = curr->neighbors_[level].next;
+  while (next != curr) {
+    if (next < rep) rep = next;
+    next = next->neighbors_[level].next;
+  }
+  return const_cast<Derived*>(static_cast<const Derived*>(rep));
+}
+
+template <typename Derived>
 void ElementBase<Derived>::Join(Derived* left, Derived* right) {
   int level{0};
   while (left != nullptr && right != nullptr) {
     if (left->neighbors_[level].next == nullptr &&
-        left->CASNext(level, nullptr, right)) {
-      // This CAS prevents read-write reordering of these `prev` pointers that
-      // might cause concurrent `Join`s to collectively fail to find a link to
-      // be added at a higher level.
-      right->CASPrev(level, nullptr, left);
+      left->CASNext(level, nullptr, right)) {
+        // This CAS prevents read-write reordering of these `prev` pointers that
+        // might cause concurrent `Join`s to collectively fail to find a link to
+        // be added at a higher level.
+        right->CASPrev(level, nullptr, left);
       left = left->FindLeftParent(level);
       right = right->FindRightParent(level);
       level++;

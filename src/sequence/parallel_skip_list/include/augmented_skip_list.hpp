@@ -86,6 +86,7 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   T GetSum() const;
 
   using ElementBase<AugmentedElement>::FindRepresentative;
+  using ElementBase<AugmentedElement>::FindRepresentative2;
   using ElementBase<AugmentedElement>::GetPreviousElement;
   using ElementBase<AugmentedElement>::GetNextElement;
 
@@ -324,7 +325,19 @@ void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElemen
     left->neighbors_[level].next = right;
     right->neighbors_[level].prev = left;
     left = left->FindLeftParent(level);
-    right = right->FindRightParent(level);
+    // Begin FindRightParent
+    AugmentedElement* current_element{right};
+    AugmentedElement* start_element{right};
+    right = nullptr;
+    do {
+      if (current_element->height_ > level + 1) {
+        right = current_element;
+        break;
+      }
+      current_element->parent = left;
+      current_element = current_element->neighbors_[level].next;
+    } while (current_element != nullptr && current_element != start_element);
+    // End FindRightParent
     level++;
   }
   Update(original_left, original_left->values_[0]);
@@ -370,17 +383,7 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
 template<typename T>
 AugmentedElement<T>* AugmentedElement<T>::SequentialSplitRight() {
   AugmentedElement* successor = GetNextElement();
-  AugmentedElement* current_element{static_cast<AugmentedElement*>(this)};
-  int level{0};
-  while (current_element != nullptr) {
-    AugmentedElement* next{current_element->neighbors_[level].next};
-    if (next == nullptr) break;
-    current_element->neighbors_[level].next = nullptr;
-    next->neighbors_[level].prev = nullptr;
-    current_element = current_element->FindLeftParent(level);
-    level++;
-  }
-  Update(this, this->values_[0]);
+  successor->SequentialSplitLeft();
   return successor;
 }
 
@@ -394,10 +397,21 @@ AugmentedElement<T>* AugmentedElement<T>::SequentialSplitLeft() {
     if (prev == nullptr) break;
     current_element->neighbors_[level].prev = nullptr;
     prev->neighbors_[level].next = nullptr;
-    current_element = current_element->FindRightParent(level);
+    // Begin FindRightParent
+    AugmentedElement* start_element{current_element};
+    do {
+      if (current_element->height_ > level + 1) {
+        break;
+      }
+      current_element->parent = nullptr;
+      current_element = current_element->neighbors_[level].next;
+    } while (current_element != nullptr && current_element != start_element);
+    if (current_element == start_element) current_element = nullptr;
+    // End FindRightParent
     level++;
   }
   Update(this, this->values_[0]);
+  Update(predecessor, predecessor->values_[0]);
   return predecessor;
 }
 

@@ -34,6 +34,8 @@ using Element = _internal::Element<T>;
 
   // Returns true if `u` and `v` are in the same tree in the represented forest.
   bool IsConnected(int u, int v) const;
+  // Uses `parent` pointers to find representatives faster.
+  bool IsConnected2(int u, int v) const;
   // Adds edge {`u`, `v`} to forest. The addition of this edge must not create a
   // cycle in the graph.
   void Link(int u, int v);
@@ -121,6 +123,11 @@ EulerTourTree<T>::~EulerTourTree() {
 template<typename T>
 bool EulerTourTree<T>::IsConnected(int u, int v) const {
   return vertices_[u].FindRepresentative() == vertices_[v].FindRepresentative();
+}
+
+template<typename T>
+bool EulerTourTree<T>::IsConnected2(int u, int v) const {
+  return vertices_[u].FindRepresentative2() == vertices_[v].FindRepresentative2();
 }
 
 template<typename T>

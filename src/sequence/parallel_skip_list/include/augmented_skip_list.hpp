@@ -53,14 +53,15 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
   static void BatchJoin(
       std::pair<AugmentedElement*, AugmentedElement*>* joins, int len);
 
-  static void SequentialJoin(AugmentedElement* left, AugmentedElement* right);
+  static void SequentialJoin(AugmentedElement* left, AugmentedElement* right, bool update = true);
+  static void SequentialJoin2(AugmentedElement* left, AugmentedElement* right, bool update = true);
 
   // For each `v` in the `len`-length array `splits`, split `v`'s list right
   // after `v`.
   static void BatchSplit(AugmentedElement** splits, int len);
 
-  AugmentedElement* SequentialSplitRight();
-  AugmentedElement* SequentialSplitLeft();
+  AugmentedElement* SequentialSplitRight(bool update = true);
+  AugmentedElement* SequentialSplitLeft(bool update = true);
 
   // For each `i`=0,1,...,`len`-1, assign value `new_values[i]` to element
   // `elements[i]`.
@@ -317,7 +318,7 @@ void AugmentedElement<T>::BatchJoin(
 }
 
 template<typename T>
-void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElement* right) {
+void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElement* right, bool update) {
   AugmentedElement* original_left = left;
   AugmentedElement* original_right = right;
   int level{0};
@@ -340,8 +341,40 @@ void AugmentedElement<T>::SequentialJoin(AugmentedElement* left, AugmentedElemen
     // End FindRightParent
     level++;
   }
-  Update(original_left, original_left->values_[0]);
-  Update(original_right, original_right->values_[0]);
+  if (update) {
+    Update(original_left, original_left->values_[0]);
+    Update(original_right, original_right->values_[0]);
+  }
+}
+
+template<typename T>
+void AugmentedElement<T>::SequentialJoin2(AugmentedElement* left, AugmentedElement* right, bool update) {
+  AugmentedElement* original_left = left;
+  AugmentedElement* original_right = right;
+  int level{0};
+  while (left != nullptr && right != nullptr) {
+    left->neighbors_[level].next = right;
+    right->neighbors_[level].prev = left;
+    if (left->height_ == level+1) left = left->parent;
+    // Begin FindRightParent
+    AugmentedElement* current_element{right};
+    AugmentedElement* start_element{right};
+    right = nullptr;
+    do {
+      if (current_element->height_ > level + 1) {
+        right = current_element;
+        break;
+      }
+      current_element->parent = left;
+      current_element = current_element->neighbors_[level].next;
+    } while (current_element != nullptr && current_element != start_element);
+    // End FindRightParent
+    level++;
+  }
+  if (update) {
+    Update(original_left, original_left->values_[0]);
+    Update(original_right, original_right->values_[0]);
+  }
 }
 
 template<typename T>
@@ -381,14 +414,14 @@ void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
 }
 
 template<typename T>
-AugmentedElement<T>* AugmentedElement<T>::SequentialSplitRight() {
+AugmentedElement<T>* AugmentedElement<T>::SequentialSplitRight(bool update) {
   AugmentedElement* successor = GetNextElement();
-  successor->SequentialSplitLeft();
+  successor->SequentialSplitLeft(update);
   return successor;
 }
 
 template<typename T>
-AugmentedElement<T>* AugmentedElement<T>::SequentialSplitLeft() {
+AugmentedElement<T>* AugmentedElement<T>::SequentialSplitLeft(bool update) {
   AugmentedElement* predecessor = GetPreviousElement();
   AugmentedElement* current_element{static_cast<AugmentedElement*>(this)};
   int level{0};
@@ -411,8 +444,10 @@ AugmentedElement<T>* AugmentedElement<T>::SequentialSplitLeft() {
     // End FindRightParent
     level++;
   }
-  Update(this, this->values_[0]);
-  Update(predecessor, predecessor->values_[0]);
+  if (update) {
+    Update(this, this->values_[0]);
+    Update(predecessor, predecessor->values_[0]);
+  }
   return predecessor;
 }
 

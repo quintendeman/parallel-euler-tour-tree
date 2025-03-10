@@ -142,12 +142,14 @@ void EulerTourTree<T>::Link(int u, int v) {
   edges_.Insert(u, v, uv);
   Element* u_left{&vertices_[u]};
   Element* v_left{&vertices_[v]};
-  Element* u_right = (Element*) u_left->SequentialSplitRight();
-  Element* v_right = (Element*) v_left->SequentialSplitRight();
-  Element::SequentialJoin(u_left, uv);
-  Element::SequentialJoin(uv, v_right);
-  Element::SequentialJoin(v_left, vu);
-  Element::SequentialJoin(vu, u_right);
+  Element* u_right = (Element*) u_left->SequentialSplitRight(false);
+  Element* v_right = (Element*) v_left->SequentialSplitRight(false);
+  Element::SequentialJoin(u_left, uv, false);
+  Element::SequentialJoin(uv, v_right, false);
+  Element::SequentialJoin(v_left, vu, false);
+  Element::SequentialJoin(vu, u_right, false);
+  Element::Update(u_left, u_left->values_[0]);
+  Element::Update(v_left, v_left->values_[0]);
 }
 
 template<typename T>
@@ -162,12 +164,16 @@ void EulerTourTree<T>::Link2(int u, int v) {
   edges_.Insert(u, v, uv);
   Element* u_right{&vertices_[u]};
   Element* v_right{&vertices_[v]};
-  Element* u_left = (Element*) u_right->SequentialSplitLeft();
-  Element* v_left = (Element*) v_right->SequentialSplitLeft();
-  Element::SequentialJoin(u_left, uv);
-  Element::SequentialJoin(uv, v_right);
-  Element::SequentialJoin(v_left, vu);
-  Element::SequentialJoin(vu, u_right);
+  Element* u_left = (Element*) u_right->SequentialSplitLeft(false);
+  Element* v_left = (Element*) v_right->SequentialSplitLeft(false);
+  Element::Update(u_left, u_left->values_[0]);
+  Element::Update(v_left, v_left->values_[0]);
+  Element::SequentialJoin2(u_left, uv, false);
+  Element::SequentialJoin2(uv, v_right, false);
+  Element::SequentialJoin2(v_left, vu, false);
+  Element::SequentialJoin2(vu, u_right, false);
+  Element::Update(u_right, u_right->values_[0]);
+  Element::Update(v_right, v_right->values_[0]);
 }
 
 template<typename T>
@@ -245,16 +251,22 @@ void EulerTourTree<T>::Cut(int u, int v) {
   edges_.Delete(u, v);
   Element* u_left = (Element*) uv->GetPreviousElement();
   Element* v_left = (Element*) vu->GetPreviousElement();
-  Element* v_right = (Element*) uv->SequentialSplitRight();
-  Element* u_right = (Element*) vu->SequentialSplitRight();
-  u_left->SequentialSplitRight();
-  v_left->SequentialSplitRight();
+  Element* v_right = (Element*) uv->SequentialSplitRight(false);
+  Element* u_right = (Element*) vu->SequentialSplitRight(false);
+  Element::Update(uv, uv->values_[0]);
+  Element::Update(vu, vu->values_[0]);
+  u_left->SequentialSplitRight(false);
+  v_left->SequentialSplitRight(false);
+  Element::Update(u_left, u_left->values_[0]);
+  Element::Update(v_left, v_left->values_[0]);
   uv->~Element();
   allocator.free(uv);
   vu->~Element();
   allocator.free(vu);
-  Element::SequentialJoin(u_left, u_right);
-  Element::SequentialJoin(v_left, v_right);
+  Element::SequentialJoin(u_left, u_right, false);
+  Element::SequentialJoin(v_left, v_right, false);
+  Element::Update(u_right, u_right->values_[0]);
+  Element::Update(v_right, v_right->values_[0]);
 }
 
 // `ignored`, `join_targets`, and `edge_elements` are scratch space.

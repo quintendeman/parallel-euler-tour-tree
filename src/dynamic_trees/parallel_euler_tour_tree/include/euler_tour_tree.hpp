@@ -132,10 +132,8 @@ bool EulerTourTree<T>::IsConnected2(int u, int v) const {
 
 template<typename T>
 void EulerTourTree<T>::Link(int u, int v) {
-  Element* uv{allocator.alloc()};
-  new (uv) Element{randomness_.ith_rand(0)};
-  Element* vu = allocator.alloc();
-  new (vu) Element{randomness_.ith_rand(1)};
+  Element* uv{allocator.create(randomness_.ith_rand(0))};
+  Element* vu{allocator.create(randomness_.ith_rand(1))};
   randomness_ = randomness_.next();
   uv->twin_ = vu;
   vu->twin_ = uv;
@@ -154,10 +152,8 @@ void EulerTourTree<T>::Link(int u, int v) {
 
 template<typename T>
 void EulerTourTree<T>::Link2(int u, int v) {
-  Element* uv{allocator.alloc()};
-  new (uv) Element{randomness_.ith_rand(0)};
-  Element* vu = allocator.alloc();
-  new (vu) Element{randomness_.ith_rand(1)};
+  Element* uv{allocator.create(randomness_.ith_rand(0))};
+  Element* vu{allocator.create(randomness_.ith_rand(1))};
   randomness_ = randomness_.next();
   uv->twin_ = vu;
   vu->twin_ = uv;
@@ -211,10 +207,8 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
 
     // allocate edge element
     if (u < v) {
-      Element* uv{allocator.alloc()};
-      new (uv) Element{randomness_.ith_rand(2 * i)};
-      Element* vu{allocator.alloc()};
-      new (vu) Element{randomness_.ith_rand(2 * i + 1)};
+      Element* uv{allocator.create(randomness_.ith_rand(2*i))};
+      Element* vu{allocator.create(randomness_.ith_rand(2*i+1))};
       uv->twin_ = vu;
       vu->twin_ = uv;
       edges_.Insert(u, v, uv);
@@ -259,10 +253,8 @@ void EulerTourTree<T>::Cut(int u, int v) {
   v_left->SequentialSplitRight(false);
   Element::Update(u_left, u_left->values_[0]);
   Element::Update(v_left, v_left->values_[0]);
-  uv->~Element();
-  allocator.free(uv);
-  vu->~Element();
-  allocator.free(vu);
+  allocator.destroy(uv);
+  allocator.destroy(vu);
   Element::SequentialJoin(u_left, u_right, false);
   Element::SequentialJoin(v_left, v_right, false);
   Element::Update(u_right, u_right->values_[0]);
@@ -371,10 +363,8 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len,
       // and deletions.
       Element* uv{edge_elements[i]};
       Element* vu{uv->twin_};
-      uv->~Element();
-      allocator.free(uv);
-      vu->~Element();
-      allocator.free(vu);
+      allocator.destroy(uv);
+      allocator.destroy(vu);
       int u, v;
       std::tie(u, v) = cuts[i];
       edges_.Delete(u, v);

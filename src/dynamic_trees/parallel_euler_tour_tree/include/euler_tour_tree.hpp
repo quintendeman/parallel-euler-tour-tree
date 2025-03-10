@@ -68,6 +68,8 @@ using Element = _internal::Element<T>;
 
   int num_vertices_;
   pbbs::random randomness_;
+
+  std::vector<Element*> node_pool;
  public:
   _internal::Element<T>* vertices_;
   _internal::EdgeMap<T> edges_;
@@ -111,11 +113,15 @@ EulerTourTree<T>::EulerTourTree(int num_vertices)
     Element::Join(&vertices_[i], &vertices_[i]);
   });
   randomness_ = randomness_.next();
+  for (int i = 0; i < 3*num_vertices-2; i++)
+    node_pool.push_back(allocator.create(randomness_.ith_rand(i)));
 }
 
 template<typename T>
 EulerTourTree<T>::~EulerTourTree() {
   pbbs::delete_array(vertices_, num_vertices_);
+  for (auto node : node_pool)
+    allocator.destroy(node);
   edges_.FreeElements(&allocator);
   Element::Finish();
 }
@@ -132,8 +138,10 @@ bool EulerTourTree<T>::IsConnected2(int u, int v) const {
 
 template<typename T>
 void EulerTourTree<T>::Link(int u, int v) {
-  Element* uv{allocator.create(randomness_.ith_rand(0))};
-  Element* vu{allocator.create(randomness_.ith_rand(1))};
+  Element* uv = node_pool.back();
+  node_pool.pop_back();
+  Element* vu = node_pool.back();
+  node_pool.pop_back();
   randomness_ = randomness_.next();
   uv->twin_ = vu;
   vu->twin_ = uv;
@@ -152,8 +160,10 @@ void EulerTourTree<T>::Link(int u, int v) {
 
 template<typename T>
 void EulerTourTree<T>::Link2(int u, int v) {
-  Element* uv{allocator.create(randomness_.ith_rand(0))};
-  Element* vu{allocator.create(randomness_.ith_rand(1))};
+  Element* uv = node_pool.back();
+  node_pool.pop_back();
+  Element* vu = node_pool.back();
+  node_pool.pop_back();
   randomness_ = randomness_.next();
   uv->twin_ = vu;
   vu->twin_ = uv;
@@ -247,14 +257,14 @@ void EulerTourTree<T>::Cut(int u, int v) {
   Element* v_left = (Element*) vu->GetPreviousElement();
   Element* v_right = (Element*) uv->SequentialSplitRight(false);
   Element* u_right = (Element*) vu->SequentialSplitRight(false);
-  Element::Update(uv, uv->values_[0]);
-  Element::Update(vu, vu->values_[0]);
   u_left->SequentialSplitRight(false);
   v_left->SequentialSplitRight(false);
+  Element::Update(uv, uv->values_[0]);
+  Element::Update(vu, vu->values_[0]);
   Element::Update(u_left, u_left->values_[0]);
   Element::Update(v_left, v_left->values_[0]);
-  allocator.destroy(uv);
-  allocator.destroy(vu);
+  node_pool.push_back(uv);
+  node_pool.push_back(vu);
   Element::SequentialJoin(u_left, u_right, false);
   Element::SequentialJoin(v_left, v_right, false);
   Element::Update(u_right, u_right->values_[0]);

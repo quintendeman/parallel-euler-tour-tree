@@ -156,6 +156,8 @@ void EulerTourTree<T>::Link(int u, int v) {
   Element::SequentialJoin(vu, u_right, false);
   Element::Update(u_left, u_left->values_[0]);
   Element::Update(v_left, v_left->values_[0]);
+  Element::Update(u_right, u_right->values_[0]);
+  Element::Update(v_right, v_right->values_[0]);
 }
 
 template<typename T>
@@ -172,12 +174,12 @@ void EulerTourTree<T>::Link2(int u, int v) {
   Element* v_right{&vertices_[v]};
   Element* u_left = (Element*) u_right->SequentialSplitLeft(false);
   Element* v_left = (Element*) v_right->SequentialSplitLeft(false);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
   Element::SequentialJoin2(u_left, uv, false);
   Element::SequentialJoin2(uv, v_right, false);
   Element::SequentialJoin2(v_left, vu, false);
   Element::SequentialJoin2(vu, u_right, false);
+  Element::Update(u_left, u_left->values_[0]);
+  Element::Update(v_left, v_left->values_[0]);
   Element::Update(u_right, u_right->values_[0]);
   Element::Update(v_right, v_right->values_[0]);
 }
@@ -261,12 +263,12 @@ void EulerTourTree<T>::Cut(int u, int v) {
   v_left->SequentialSplitRight(false);
   Element::Update(uv, uv->values_[0]);
   Element::Update(vu, vu->values_[0]);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
   node_pool.push_back(uv);
   node_pool.push_back(vu);
   Element::SequentialJoin(u_left, u_right, false);
   Element::SequentialJoin(v_left, v_right, false);
+  Element::Update(u_left, u_left->values_[0]);
+  Element::Update(v_left, v_left->values_[0]);
   Element::Update(u_right, u_right->values_[0]);
   Element::Update(v_right, v_right->values_[0]);
 }

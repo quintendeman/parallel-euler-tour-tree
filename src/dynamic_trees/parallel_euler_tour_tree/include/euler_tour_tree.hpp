@@ -200,8 +200,8 @@ void EulerTourTree<T>::Link3(int u, int v) {
   Element* u_right = (Element*) u_left->SequentialSplitRight(false);
   Element* v_left = (Element*) v_right->SequentialSplitLeft(false);
   Element::SequentialJoin2(u_left, uv, false);
-  Element::SequentialJoin2(uv, v_left, false);
-  Element::SequentialJoin2(v_right, vu, false);
+  Element::SequentialJoin2(uv, v_right, false);
+  Element::SequentialJoin2(v_left, vu, false);
   Element::SequentialJoin2(vu, u_right, false);
   Element::Update(u_left, u_left->values_[0]);
   Element::Update(v_left, v_left->values_[0]);

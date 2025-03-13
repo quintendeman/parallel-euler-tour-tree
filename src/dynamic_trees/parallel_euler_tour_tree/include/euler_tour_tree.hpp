@@ -40,6 +40,7 @@ using Element = _internal::Element<T>;
   // cycle in the graph.
   void Link(int u, int v);
   void Link2(int u, int v);
+  void Link3(int u, int v);
   // Removes edge {`u`, `v`} from forest. The edge must be present in the
   // forest.
   void Cut(int u, int v);
@@ -177,6 +178,30 @@ void EulerTourTree<T>::Link2(int u, int v) {
   Element::SequentialJoin2(u_left, uv, false);
   Element::SequentialJoin2(uv, v_right, false);
   Element::SequentialJoin2(v_left, vu, false);
+  Element::SequentialJoin2(vu, u_right, false);
+  Element::Update(u_left, u_left->values_[0]);
+  Element::Update(v_left, v_left->values_[0]);
+  Element::Update(u_right, u_right->values_[0]);
+  Element::Update(v_right, v_right->values_[0]);
+}
+
+template<typename T>
+void EulerTourTree<T>::Link3(int u, int v) {
+  Element* uv = node_pool.back();
+  node_pool.pop_back();
+  Element* vu = node_pool.back();
+  node_pool.pop_back();
+  randomness_ = randomness_.next();
+  uv->twin_ = vu;
+  vu->twin_ = uv;
+  edges_.Insert(u, v, uv);
+  Element* u_left{&vertices_[u]};
+  Element* v_right{&vertices_[v]};
+  Element* u_right = (Element*) u_left->SequentialSplitRight(false);
+  Element* v_left = (Element*) v_right->SequentialSplitLeft(false);
+  Element::SequentialJoin2(u_left, uv, false);
+  Element::SequentialJoin2(uv, v_left, false);
+  Element::SequentialJoin2(v_right, vu, false);
   Element::SequentialJoin2(vu, u_right, false);
   Element::Update(u_left, u_left->values_[0]);
   Element::Update(v_left, v_left->values_[0]);

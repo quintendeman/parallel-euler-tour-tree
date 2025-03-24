@@ -26,6 +26,7 @@ using Element = _internal::Element<T>;
   EulerTourTree() = delete;
   // Initializes n-vertex forest with no edges.
   explicit EulerTourTree(int num_vertices);
+  explicit EulerTourTree(int num_vertices, int seed);
   ~EulerTourTree();
   EulerTourTree(const EulerTourTree&) = delete;
   EulerTourTree(EulerTourTree&&) = delete;
@@ -106,6 +107,21 @@ namespace {
 template<typename T>
 EulerTourTree<T>::EulerTourTree(int num_vertices)
     : num_vertices_{num_vertices} , edges_{num_vertices_} , randomness_{} {
+  Element::Initialize();
+  vertices_ = pbbs::new_array_no_init<Element>(num_vertices_);
+  parallel_for (0, num_vertices_, [&] (size_t i) {
+    new (&vertices_[i]) Element{randomness_.ith_rand(i)};
+    // The Euler tour on a vertex v (a singleton tree) is simply (v, v).
+    Element::Join(&vertices_[i], &vertices_[i]);
+  });
+  randomness_ = randomness_.next();
+  for (int i = 0; i < 3*num_vertices-2; i++)
+    node_pool.push_back(allocator.create(randomness_.ith_rand(i)));
+}
+
+template<typename T>
+EulerTourTree<T>::EulerTourTree(int num_vertices, int seed)
+    : num_vertices_{num_vertices} , edges_{num_vertices_} , randomness_{seed} {
   Element::Initialize();
   vertices_ = pbbs::new_array_no_init<Element>(num_vertices_);
   parallel_for (0, num_vertices_, [&] (size_t i) {

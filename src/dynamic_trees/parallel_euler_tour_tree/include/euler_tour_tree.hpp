@@ -26,7 +26,7 @@ using Element = _internal::Element<T>;
   EulerTourTree() = delete;
   // Initializes n-vertex forest with no edges.
   explicit EulerTourTree(int num_vertices);
-  explicit EulerTourTree(int num_vertices, int seed);
+  explicit EulerTourTree(int num_vertices, size_t seed);
   ~EulerTourTree();
   EulerTourTree(const EulerTourTree&) = delete;
   EulerTourTree(EulerTourTree&&) = delete;
@@ -120,7 +120,7 @@ EulerTourTree<T>::EulerTourTree(int num_vertices)
 }
 
 template<typename T>
-EulerTourTree<T>::EulerTourTree(int num_vertices, int seed)
+EulerTourTree<T>::EulerTourTree(int num_vertices, size_t seed)
     : num_vertices_{num_vertices} , edges_{num_vertices_} , randomness_{seed} {
   Element::Initialize();
   vertices_ = pbbs::new_array_no_init<Element>(num_vertices_);

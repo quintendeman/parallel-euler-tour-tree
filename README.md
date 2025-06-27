@@ -41,7 +41,7 @@ tree.BatchCut(links, k);
 delete[] links;
 ```
 
-# Using Custom Augmentation
+## Using Custom Augmentation
 
 The code will still use integer values and the sum function by default.
 To customize the augmentations use the desired type in the template.

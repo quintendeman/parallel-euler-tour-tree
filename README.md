@@ -1,8 +1,11 @@
 # ParlayLib Version of Batch-Parallel Euler Tour Trees
 
 This code is forked from the code for the ALENEX 2019 paper [Batch-Parallel Euler Tour Trees](https://arxiv.org/abs/1810.10738).
-In this repository we convert it to use the parallel functionality of the ParlayLib library.
-The original README.md file is appended below.
+The original README.md file is appended below for.
+
+In this repository I converted the code to use the parallel functionality of the ParlayLib library.
+I only converted the parallel skip list and parallel Euler tour tree code, node the parallel treaps code.
+I also added support for a custom subtree value type and augmentation, which needs to be tested.
 
 ## Including the ParlayLib version through CMake
 
@@ -19,6 +22,34 @@ add_executable(test
   test/test.cpp
 )
 target_link_libraries(test PRIVATE par-ett)
+```
+
+## Using the Library
+
+This small excerpt shows an example of using the library once included through CMake.
+
+```
+int n = 1000;
+int k = 250;
+using EulerTourTree = parallel_euler_tour_tree::EulerTourTree<int>;
+EulerTourTree tree(n);
+std::pair<int,int>* links = new std::pair<int,int>[k];
+for (int i = 0; i < k; i++)
+    links[i] = {i,i+1};
+tree.BatchLink(links, k);
+tree.BatchCut(links, k);
+delete[] links;
+```
+
+# Using Custom Augmentation
+
+The code will still use integer values and the sum function by default.
+To customize the augmentations use the desired type in the template.
+Then define the two static variables similar to the example here:
+
+```
+parallel_skip_list::AugmentedElement<int>::aggregate_function = [&] (int x, int y) { return x + y; };
+parallel_skip_list::AugmentedElement<int>::default_value = 1;
 ```
 
 

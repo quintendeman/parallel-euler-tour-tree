@@ -22,6 +22,11 @@ if(NOT parlaylib_POPULATED)
   add_subdirectory(${parlaylib_SOURCE_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+FetchContent_Declare(googletest
+  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+FetchContent_MakeAvailable(googletest)
+
 # FetchContent_Declare(abseil-cpp
 #   GIT_REPOSITORY  https://github.com/abseil/abseil-cpp.git
 #   GIT_TAG         master
@@ -36,6 +41,13 @@ target_include_directories(par-ett INTERFACE
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   src
 )
+
+add_executable(parlay_test
+  test/test_runner.cpp
+  test/parlay_ett_test.cpp
+)
+target_link_libraries(parlay_test PRIVATE parlay GTest::gtest_main)
+target_include_directories(parlay_test PRIVATE src)
 
 add_executable(skip_list_tests
   src/sequence/parallel_skip_list/tests/test_parallel_skip_list.cpp

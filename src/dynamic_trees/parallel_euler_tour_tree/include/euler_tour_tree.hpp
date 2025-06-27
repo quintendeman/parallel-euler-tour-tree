@@ -5,6 +5,7 @@
 #include <dynamic_trees/parallel_euler_tour_tree/include/edge_map.hpp>
 #include <dynamic_trees/parallel_euler_tour_tree/include/euler_tour_sequence.hpp>
 #include <sequence/parallel_skip_list/include/skip_list_base.hpp>
+
 #include <utilities/include/random.h>
 #include <utilities/include/seq.h>
 #include <utilities/include/sequence_ops.h>
@@ -17,7 +18,7 @@ namespace parallel_euler_tour_tree {
 // using `IsConnected`. This implementation can also exploit parallelism when
 // many edges are added at once through `BatchLink` or many edges are deleted at
 // once through `BatchCut`.
-template<typename T>
+template<typename T = int>
 class EulerTourTree {
 using Element = _internal::Element<T>;
  public:
@@ -35,23 +36,14 @@ using Element = _internal::Element<T>;
 
   // Returns true if `u` and `v` are in the same tree in the represented forest.
   bool IsConnected(int u, int v) const;
-  // Uses `parent` pointers to find representatives faster.
-  bool IsConnected2(int u, int v) const;
   // Adds edge {`u`, `v`} to forest. The addition of this edge must not create a
   // cycle in the graph.
   void Link(int u, int v);
-  void Link2(int u, int v);
-  void Link3(int u, int v);
   // Removes edge {`u`, `v`} from forest. The edge must be present in the
   // forest.
   void Cut(int u, int v);
   // Set the value of vertex `v` to be `new_value`.
   void Update(int v, T new_value);
-  // Update the augmented value of vertex `v` and each node that aggregates it by
-  // applying the function `f` on the value of each node.
-  void UpdateWithFunction(int v, std::function<void(T&)> f);
-  // Return the value associated with element `v`.
-  T GetValue(int v);
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
@@ -149,80 +141,23 @@ bool EulerTourTree<T>::IsConnected(int u, int v) const {
 }
 
 template<typename T>
-bool EulerTourTree<T>::IsConnected2(int u, int v) const {
-  return vertices_[u].FindRepresentative2() == vertices_[v].FindRepresentative2();
-}
-
-template<typename T>
 void EulerTourTree<T>::Link(int u, int v) {
-  Element* uv = node_pool.back();
-  node_pool.pop_back();
-  Element* vu = node_pool.back();
-  node_pool.pop_back();
+  Element* uv{allocator.alloc()};
+  new (uv) Element{randomness_.ith_rand(0)};
+  Element* vu = allocator.alloc();
+  new (vu) Element{randomness_.ith_rand(1)};
   randomness_ = randomness_.next();
   uv->twin_ = vu;
   vu->twin_ = uv;
   edges_.Insert(u, v, uv);
   Element* u_left{&vertices_[u]};
   Element* v_left{&vertices_[v]};
-  Element* u_right = (Element*) u_left->SequentialSplitRight(false);
-  Element* v_right = (Element*) v_left->SequentialSplitRight(false);
-  Element::SequentialJoin(u_left, uv, false);
-  Element::SequentialJoin(uv, v_right, false);
-  Element::SequentialJoin(v_left, vu, false);
-  Element::SequentialJoin(vu, u_right, false);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
-  Element::Update(u_right, u_right->values_[0]);
-  Element::Update(v_right, v_right->values_[0]);
-}
-
-template<typename T>
-void EulerTourTree<T>::Link2(int u, int v) {
-  Element* uv = node_pool.back();
-  node_pool.pop_back();
-  Element* vu = node_pool.back();
-  node_pool.pop_back();
-  randomness_ = randomness_.next();
-  uv->twin_ = vu;
-  vu->twin_ = uv;
-  edges_.Insert(u, v, uv);
-  Element* u_right{&vertices_[u]};
-  Element* v_right{&vertices_[v]};
-  Element* u_left = (Element*) u_right->SequentialSplitLeft(false);
-  Element* v_left = (Element*) v_right->SequentialSplitLeft(false);
-  Element::SequentialJoin2(u_left, uv, false);
-  Element::SequentialJoin2(uv, v_right, false);
-  Element::SequentialJoin2(v_left, vu, false);
-  Element::SequentialJoin2(vu, u_right, false);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
-  Element::Update(u_right, u_right->values_[0]);
-  Element::Update(v_right, v_right->values_[0]);
-}
-
-template<typename T>
-void EulerTourTree<T>::Link3(int u, int v) {
-  Element* uv = node_pool.back();
-  node_pool.pop_back();
-  Element* vu = node_pool.back();
-  node_pool.pop_back();
-  randomness_ = randomness_.next();
-  uv->twin_ = vu;
-  vu->twin_ = uv;
-  edges_.Insert(u, v, uv);
-  Element* u_left{&vertices_[u]};
-  Element* v_right{&vertices_[v]};
-  Element* u_right = (Element*) u_left->SequentialSplitRight(false);
-  Element* v_left = (Element*) v_right->SequentialSplitLeft(false);
-  Element::SequentialJoin2(u_left, uv, false);
-  Element::SequentialJoin2(uv, v_right, false);
-  Element::SequentialJoin2(v_left, vu, false);
-  Element::SequentialJoin2(vu, u_right, false);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
-  Element::Update(u_right, u_right->values_[0]);
-  Element::Update(v_right, v_right->values_[0]);
+  Element* u_right{static_cast<Element*>(u_left->Split())};
+  Element* v_right{static_cast<Element*>(v_left->Split())};
+  Element::Join(u_left, uv);
+  Element::Join(uv, v_right);
+  Element::Join(v_left, vu);
+  Element::Join(vu, u_right);
 }
 
 template<typename T>
@@ -296,22 +231,18 @@ void EulerTourTree<T>::Cut(int u, int v) {
   Element* uv{edges_.Find(u, v)};
   Element* vu{uv->twin_};
   edges_.Delete(u, v);
-  Element* u_left = (Element*) uv->GetPreviousElement();
-  Element* v_left = (Element*) vu->GetPreviousElement();
-  Element* v_right = (Element*) uv->SequentialSplitRight(false);
-  Element* u_right = (Element*) vu->SequentialSplitRight(false);
-  u_left->SequentialSplitRight(false);
-  v_left->SequentialSplitRight(false);
-  Element::Update(uv, uv->values_[0]);
-  Element::Update(vu, vu->values_[0]);
-  node_pool.push_back(uv);
-  node_pool.push_back(vu);
-  Element::SequentialJoin(u_left, u_right, false);
-  Element::SequentialJoin(v_left, v_right, false);
-  Element::Update(u_left, u_left->values_[0]);
-  Element::Update(v_left, v_left->values_[0]);
-  Element::Update(u_right, u_right->values_[0]);
-  Element::Update(v_right, v_right->values_[0]);
+  Element* u_left{static_cast<Element*>(uv->GetPreviousElement())};
+  Element* v_left{static_cast<Element*>(vu->GetPreviousElement())};
+  Element* v_right{static_cast<Element*>(uv->Split())};
+  Element* u_right{static_cast<Element*>(vu->Split())};
+  u_left->Split();
+  v_left->Split();
+  uv->~Element();
+  allocator.free(uv);
+  vu->~Element();
+  allocator.free(vu);
+  Element::Join(u_left, u_right);
+  Element::Join(v_left, v_right);
 }
 
 // `ignored`, `join_targets`, and `edge_elements` are scratch space.
@@ -462,22 +393,12 @@ void EulerTourTree<T>::Update(int v, T new_value) {
 }
 
 template<typename T>
-void EulerTourTree<T>::UpdateWithFunction(int v, std::function<void(T&)> f) {
-  Element::UpdateWithFunction(&vertices_[v], f);
-}
-
-template<typename T>
 void EulerTourTree<T>::BatchUpdate(int* vertices, T* new_values, int len) {
   Element** update_targets{pbbs::new_array_no_init<Element*>(len)};
   parallel_for (0, len, [&] (size_t i) {
     update_targets[i] = vertices_[vertices[i]];
   });
   BatchUpdate(update_targets, new_values, len);
-}
-
-template<typename T>
-T EulerTourTree<T>::GetValue(int v) {
-  return vertices_[v].values_[0];
 }
 
 }  // namespace parallel_euler_tour_tree

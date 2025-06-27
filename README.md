@@ -1,3 +1,27 @@
+# ParlayLib Version of Batch-Parallel Euler Tour Trees
+
+This code is forked from the code for the ALENEX 2019 paper [Batch-Parallel Euler Tour Trees](https://arxiv.org/abs/1810.10738).
+In this repository we convert it to use the parallel functionality of the ParlayLib library.
+The original README.md file is appended below.
+
+## Including the ParlayLib version through CMake
+
+This excerpt shows an example of how to include the Batch-Parallel Euler Tour Trees code in this repository using CMake.
+
+```
+FetchContent_Declare(parallel-ett
+    GIT_REPOSITORY  git@github.com:quintendeman/parallel-euler-tour-tree.git
+    GIT_TAG         master
+)
+FetchContent_MakeAvailable(parallel-ett)
+
+add_executable(test
+  test/test.cpp
+)
+target_link_libraries(test PRIVATE par-ett)
+```
+
+
 # Batch-parallel Euler tour trees
 
 This is the code for the ALENEX 2019 paper [Batch-Parallel Euler Tour

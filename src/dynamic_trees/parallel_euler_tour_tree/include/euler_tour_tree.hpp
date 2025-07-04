@@ -55,6 +55,15 @@ using Element = _internal::Element<T>;
   // new corresponding value in the `new_values` array.
   void BatchUpdate(int* vertices, T* new_values, int len);
 
+  // More modern interface helpers
+  void batch_link(parlay::sequence<std::pair<int, int>>& links) {
+    BatchLink(links.begin(), links.size());
+  }
+
+  void batch_cut(parlay::sequence<std::pair<int, int>>& cuts) {
+    BatchCut(cuts.begin(), cuts.size());
+  }
+
  private:
   void BatchCutRecurse(std::pair<int, int>* cuts, int len,
       bool* ignored, _internal::Element<T>** join_targets,

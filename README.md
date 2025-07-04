@@ -4,7 +4,7 @@ This code is forked from the code for the ALENEX 2019 paper [Batch-Parallel Eule
 The original README.md file is appended below for.
 
 In this repository I converted the code to use the parallel functionality of the ParlayLib library.
-I only converted the parallel skip list and parallel Euler tour tree code, node the parallel treaps code.
+I only converted the parallel skip list and parallel Euler tour tree code, not the parallel treaps code or any sequential code.
 I also added support for a custom subtree value type and augmentation, which needs to be tested.
 
 ## Including the ParlayLib version through CMake
@@ -29,6 +29,8 @@ target_link_libraries(test PRIVATE par-ett)
 This small excerpt shows an example of using the library once included through CMake.
 
 ```
+#include "ParETT/euler_tour_tree.hpp"
+
 int n = 1000;
 int k = 250;
 using EulerTourTree = parallel_euler_tour_tree::EulerTourTree<int>;

@@ -59,8 +59,13 @@ using Element = _internal::Element<T>;
   void batch_link(parlay::sequence<std::pair<int, int>>& links) {
     BatchLink(links.begin(), links.size());
   }
-
   void batch_cut(parlay::sequence<std::pair<int, int>>& cuts) {
+    BatchCut(cuts.begin(), cuts.size());
+  }
+  void BatchLink(parlay::sequence<std::pair<int, int>>& links) {
+    BatchLink(links.begin(), links.size());
+  }
+  void BatchCut(parlay::sequence<std::pair<int, int>>& cuts) {
     BatchCut(cuts.begin(), cuts.size());
   }
 

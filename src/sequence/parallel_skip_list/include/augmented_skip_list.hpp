@@ -59,10 +59,12 @@ class AugmentedElement : public ElementBase<AugmentedElement<T>> {
 
   // For each `i`=0,1,...,`len`-1, assign value `new_values[i]` to element
   // `elements[i]`.
-  static void BatchUpdate(AugmentedElement** elements, T* new_values, int len);
+  static void BatchUpdate(parlay::sequence<AugmentedElement*>& elements, parlay::sequence<T>& new_values);
+  static void BatchRecomputeAggregate(parlay::sequence<AugmentedElement*>& elements);
 
   // Assign value `new_value` to element `element`.
-  static void Update(AugmentedElement* element, T new_value, int level = 0);
+  static void Update(AugmentedElement* element, T new_value);
+  static void RecomputeAggregate(AugmentedElement* element, int level = 0);
 
   // Get the result of applying the augmentation function over the subsequence
   // between `left` and `right` inclusive.
@@ -227,32 +229,31 @@ void AugmentedElement<T>::UpdateTopDownHelper(int level, AugmentedElement* curr)
 // used privately to keep the augmented values correct when the list has
 // structurally changed.
 template<typename T>
-void AugmentedElement<T>::BatchUpdate(
-    AugmentedElement** elements, T* new_values, int len) {
-  if (new_values != nullptr) {
-    parallel_for (0, len, [&] (size_t i) {
-      elements[i]->values_[0] = new_values[i];
-    });
-  }
+void AugmentedElement<T>::BatchUpdate(parlay::sequence<AugmentedElement*>& elements, parlay::sequence<T>& new_values) {
+  parallel_for (0, new_values.size(), [&] (size_t i) {
+    elements[i]->values_[0] = new_values[i];
+  });
+  BatchRecomputeAggregate(elements);
+}
 
+template<typename T>
+void AugmentedElement<T>::BatchRecomputeAggregate(parlay::sequence<AugmentedElement*>& elements) {
   // The nodes whose augmented values need updating are the ancestors of
   // `elements`. Some nodes may share ancestors. `top_nodes` will contain,
   // without duplicates, the set of all ancestors of `elements` with no left
   // parents. From there we can walk down from those ancestors to update all
   // required augmented values.
-  AugmentedElement** top_nodes{pbbs::new_array_no_init<AugmentedElement*>(len)};
-
-  parallel_for (0, len, [&] (size_t i) {
+  parlay::sequence<AugmentedElement*> top_nodes = parlay::tabulate(elements.size(), [&] (size_t i) {
     int level{0};
     AugmentedElement* curr{elements[i]};
+    if (curr == nullptr) return (AugmentedElement*) nullptr;
     while (true) {
       int curr_update_level{curr->update_level_};
       if (curr_update_level == NA && CAS(&curr->update_level_, NA, level)) {
         level = curr->height_ - 1;
         AugmentedElement* parent{curr->FindLeftParent(level)};
         if (parent == nullptr) {
-          top_nodes[i] = curr;
-          break;
+          return curr;
         } else {
           curr = parent;
           level++;
@@ -261,82 +262,54 @@ void AugmentedElement<T>::BatchUpdate(
         // Someone other execution is shares this ancestor and has already
         // claimed it, so there's no need to walk further up.
         writeMin(&curr->update_level_, level);
-        top_nodes[i] = nullptr;
-        break;
+        return (AugmentedElement*) nullptr;
       }
     }
   });
 
-  parallel_for (0, len, [&] (size_t i) {
+  parallel_for (0, top_nodes.size(), [&] (size_t i) {
     if (top_nodes[i] != nullptr) {
       top_nodes[i]->UpdateTopDown(top_nodes[i]->height_ - 1);
     }
   });
-
-  pbbs::delete_array(top_nodes, len);
 }
 
 template<typename T>
-void AugmentedElement<T>::Update(AugmentedElement* element, T new_value, int level) {
-  element->values_[level] = new_value;
+void AugmentedElement<T>::Update(AugmentedElement* element, T new_value) {
+  element->values_[0] = new_value;
+  RecomputeAggregate(element, 0);
+}
+
+template<typename T>
+void AugmentedElement<T>::RecomputeAggregate(AugmentedElement* element, int level) {
   AugmentedElement* parent{element->FindLeftParent(level)};
   if (!parent) return;
-  T sum{parent->values_[level]};
-  AugmentedElement* curr{parent->neighbors_[level].next};
+  T sum = parent->values_[level];
+  AugmentedElement* curr = parent->neighbors_[level].next;
   while (curr != nullptr && curr->height_ == level+1) {
     sum = aggregate_function(sum, curr->values_[level]);
     curr = curr->neighbors_[level].next;
   }
-  Update(parent, sum, level+1);
+  parent->values_[level+1] = std::move(sum);
+  RecomputeAggregate(parent, level+1);
 }
 
 template<typename T>
-void AugmentedElement<T>::BatchJoin(
-    pair<AugmentedElement*, AugmentedElement*>* joins, int len) {
-  AugmentedElement** join_lefts{
-      pbbs::new_array_no_init<AugmentedElement*>(len)};
-  parallel_for (0, len, [&] (size_t i) {
+void AugmentedElement<T>::BatchJoin(pair<AugmentedElement*, AugmentedElement*>* joins, int len) {
+  parlay::sequence<AugmentedElement*> join_lefts = parlay::tabulate(len, [&] (size_t i) {
     AugmentedElement<T>::Join(joins[i].first, joins[i].second);
-    join_lefts[i] = joins[i].first;
+    return joins[i].first;
   });
-  BatchUpdate(join_lefts, nullptr, len);
-  pbbs::delete_array(join_lefts, len);
+  BatchRecomputeAggregate(join_lefts);
 }
 
 template<typename T>
 void AugmentedElement<T>::BatchSplit(AugmentedElement** splits, int len) {
-  parallel_for (0, len, [&] (size_t i) {
+  parlay::sequence<AugmentedElement*> split_lefts = parlay::tabulate(len, [&] (size_t i) {
     splits[i]->Split();
+    return splits[i];
   });
-  parallel_for (0, len, [&] (size_t i) {
-    AugmentedElement* curr{splits[i]};
-    // `can_proceed` breaks ties when there are duplicate splits. When two
-    // splits occur at the same place, only one of them should walk up and
-    // update.
-    bool can_proceed{
-        curr->update_level_ == NA && CAS(&curr->update_level_, NA, 0)};
-    if (can_proceed) {
-      // Update values of `curr`'s ancestors.
-      T sum{curr->values_[0]};
-      int level{0};
-      while (true) {
-        if (level < curr->height_ - 1) {
-          level++;
-          curr->values_[level] = sum;
-        } else {
-          curr = curr->neighbors_[level].prev;
-          if (curr == nullptr) {
-            break;
-          } else {
-            sum = aggregate_function(sum, curr->values_[level]);
-          }
-        }
-      }
-    }
-  });
-  parallel_for (0, len, [&] (size_t i) {
-    splits[i]->update_level_ = NA;
-  });
+  BatchRecomputeAggregate(split_lefts);
 }
 
 template<typename T>

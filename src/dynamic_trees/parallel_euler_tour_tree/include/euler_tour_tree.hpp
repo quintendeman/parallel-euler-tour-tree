@@ -21,6 +21,7 @@ namespace parallel_euler_tour_tree {
 template<typename T = int>
 class EulerTourTree {
 using Element = _internal::Element<T>;
+using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
  public:
   static parlay::type_allocator<_internal::Element<T>> allocator;
 
@@ -70,9 +71,8 @@ using Element = _internal::Element<T>;
   }
 
  private:
-  void BatchCutRecurse(std::pair<int, int>* cuts, int len,
-      bool* ignored, _internal::Element<T>** join_targets,
-      _internal::Element<T>** edge_elements);
+  void BatchCutRecurse(std::pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
+    parlay::sequence<Element*>& join_targets, parlay::sequence<Element*>& edge_elements);
 
   int num_vertices_;
   pbbs::random randomness_;
@@ -172,6 +172,10 @@ void EulerTourTree<T>::Link(int u, int v) {
   Element::Join(uv, v_right);
   Element::Join(v_left, vu);
   Element::Join(vu, u_right);
+  Element::RecomputeAggregate(u_left);
+  Element::RecomputeAggregate(uv);
+  Element::RecomputeAggregate(v_left);
+  Element::RecomputeAggregate(vu);
 }
 
 template<typename T>
@@ -197,15 +201,10 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
   });
   parlay::integer_sort_inplace(links_both_dirs, [&] (pair<uint32_t,uint32_t> p) { return p.first; });
 
-  Element** split_successors{pbbs::new_array_no_init<Element*>(2 * len)};
-  parallel_for (0, 2*len, [&] (size_t i) {
+  parlay::sequence<Element*> split_successors(2*len);
+  parlay::sequence<AugmentedElement*> vertices = parlay::tabulate(2*len, [&] (size_t i) {
     int u, v;
     std::tie(u, v) = links_both_dirs[i];
-
-    // split on each vertex that appears in the input
-    if (i == 2 * len - 1 || u != links_both_dirs[i + 1].first) {
-      split_successors[i] = (Element*) vertices_[u].Split();
-    }
 
     // allocate edge element
     if (u < v) {
@@ -215,10 +214,19 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
       vu->twin_ = uv;
       edges_.Insert(u, v, uv);
     }
+
+    // split on each vertex that appears in the input
+    if (i == 2 * len - 1 || u != links_both_dirs[i + 1].first) {
+      split_successors[i] = (Element*) vertices_[u].Split();
+      return (AugmentedElement*) &vertices_[u];
+    } else {
+      split_successors[i] = (Element*) nullptr;
+      return (AugmentedElement*) nullptr;
+    }
   });
   randomness_ = randomness_.next();
 
-  parallel_for (0, 2*len, [&] (size_t i) {
+  parlay::sequence<AugmentedElement*> join_lefts = parlay::tabulate(2*len, [&] (size_t i) {
     int u, v;
     std::tie(u, v) = links_both_dirs[i];
     Element* uv{edges_.Find(u, v)};
@@ -235,9 +243,10 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
       std::tie(u2, v2) = links_both_dirs[i + 1];
       Element::Join(vu, edges_.Find(u2, v2));
     }
+    return (AugmentedElement*) vu;
   });
-
-  pbbs::delete_array(split_successors, 2 * len);
+  Element::BatchRecomputeAggregate(vertices);
+  Element::BatchRecomputeAggregate(join_lefts);
 }
 
 template<typename T>
@@ -257,6 +266,8 @@ void EulerTourTree<T>::Cut(int u, int v) {
   allocator.free(vu);
   Element::Join(u_left, u_right);
   Element::Join(v_left, v_right);
+  Element::RecomputeAggregate(u_left);
+  Element::RecomputeAggregate(v_left);
 }
 
 // `ignored`, `join_targets`, and `edge_elements` are scratch space.
@@ -266,8 +277,8 @@ void EulerTourTree<T>::Cut(int u, int v) {
 // `edge_elements[i]` stores a pointer to the sequence element corresponding to
 // edge `cuts[i]`.
 template<typename T>
-void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len,
-    bool* ignored, Element** join_targets, Element** edge_elements) {
+void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
+    parlay::sequence<Element*>& join_targets, parlay::sequence<Element*>& edge_elements) {
   if (len <= 75) {
     BatchCutSequential(this, cuts, len);
     return;
@@ -354,6 +365,7 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len,
     }
   });
 
+  parlay::sequence<AugmentedElement*> recomputes(2*len);
   parallel_for (0, len, [&] (size_t i) {
     if (!ignored[i]) {
       // Here we must use `edge_elements[i]` instead of `edges_.Find(u, v)`
@@ -369,18 +381,19 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len,
 
       if (join_targets[4 * i] != nullptr) {
         Element::Join(join_targets[4 * i], join_targets[4 * i + 1]);
+        recomputes[i/2] = join_targets[4*i];
       }
       if (join_targets[4 * i + 2] != nullptr) {
         Element::Join(join_targets[4 * i + 2], join_targets[4 * i + 3]);
+        recomputes[i/2+1] = join_targets[4*i+2];
       }
     }
   });
+  Element::BatchRecomputeAggregate(recomputes);
 
-  seq::sequence<pair<int, int>> cuts_seq{
-      seq::sequence<pair<int, int>>(cuts, len)};
-  seq::sequence<bool> ignored_seq{seq::sequence<bool>(ignored, len)};
-  seq::sequence<pair<int, int>> next_cuts_seq{
-    pbbs::pack(cuts_seq, ignored_seq)};
+  seq::sequence<pair<int, int>> cuts_seq{seq::sequence<pair<int, int>>(cuts, len)};
+  seq::sequence<bool> ignored_seq{seq::sequence<bool>(ignored.begin(), len)};
+  seq::sequence<pair<int, int>> next_cuts_seq{pbbs::pack(cuts_seq, ignored_seq)};
   BatchCutRecurse(next_cuts_seq.as_array(), next_cuts_seq.size(),
       ignored, join_targets, edge_elements);
   pbbs::delete_array(next_cuts_seq.as_array(), next_cuts_seq.size());
@@ -392,13 +405,10 @@ void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
     BatchCutSequential(this, cuts, len);
     return;
   }
-  bool* ignored{pbbs::new_array_no_init<bool>(len)};
-  Element** join_targets{pbbs::new_array_no_init<Element*>(4 * len)};
-  Element** edge_elements{pbbs::new_array_no_init<Element*>(len)};
+  parlay::sequence<bool> ignored(len);
+  parlay::sequence<Element*> join_targets(4*len);
+  parlay::sequence<Element*> edge_elements(len);
   BatchCutRecurse(cuts, len, ignored, join_targets, edge_elements);
-  pbbs::delete_array(edge_elements, len);
-  pbbs::delete_array(join_targets, 4 * len);
-  pbbs::delete_array(ignored, len);
 }
 
 template<typename T>

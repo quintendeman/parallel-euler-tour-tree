@@ -1,11 +1,11 @@
 # ParlayLib Version of Batch-Parallel Euler Tour Trees
 
 This code is forked from the code for the ALENEX 2019 paper [Batch-Parallel Euler Tour Trees](https://arxiv.org/abs/1810.10738).
-The original README.md file is appended below for.
+The original README.md file is appended below for reference.
 
 In this repository I converted the code to use the parallel functionality of the ParlayLib library.
-I only converted the parallel skip list and parallel Euler tour tree code, not the parallel treaps code or any sequential code.
-I also added support for a custom subtree value type and augmentation, which needs to be tested.
+I only converted the parallel skip list and parallel Euler tour tree code, not any other code in the base repository.
+I also added support for a custom subtree value type and augmentation.
 
 ## Including the ParlayLib version through CMake
 

@@ -26,6 +26,24 @@ class Element : public parallel_skip_list::AugmentedElement<T> {
   static void DerivedFinish() {}
 };
 
+class UnaugmentedElement : public parallel_skip_list::ElementBase<UnaugmentedElement> {
+ public:
+  UnaugmentedElement() : parallel_skip_list::ElementBase<UnaugmentedElement>{} {}
+  explicit UnaugmentedElement(size_t random_int)
+    : parallel_skip_list::ElementBase<UnaugmentedElement>{random_int} {}
+
+  // If this element represents edge (u, v), `twin` should point towards (v, u).
+  UnaugmentedElement* twin_{nullptr};
+  // When batch splitting, we mark this as `true` for an edge that we will
+  // splice out in the current round of recursion.
+  bool split_mark_{false};
+
+ private:
+  friend class parallel_skip_list::ElementBase<UnaugmentedElement>;
+  static void DerivedInitialize() {}
+  static void DerivedFinish() {}
+};
+
 }  // namespace _internal
 
 }  // namespace parallel_euler_tour_tree

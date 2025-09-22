@@ -1,8 +1,28 @@
 #include <gtest/gtest.h>
 #include "dynamic_trees/parallel_euler_tour_tree/include/euler_tour_tree.hpp"
+#include "dynamic_trees/parallel_euler_tour_tree/include/unaugmented_euler_tour_tree.hpp"
 
 
-TEST(ParlaySuite, test) {
+TEST(ParlaySuite, mini_unaugmented_test) {
+    int n = 1000;
+    int k = n-1;
+    int num_trials = 100;
+    srand(time(NULL));
+
+    using EulerTourTree = parallel_euler_tour_tree::UnaugmentedEulerTourTree;
+
+    for (int trial = 0; trial < num_trials; trial++) {
+        size_t seed = rand();
+        EulerTourTree tree(n, seed);
+        parlay::sequence<std::pair<int,int>> links(k);
+        for (int i = 0; i < k; i++)
+            links[i] = {i,i+1};
+        tree.BatchLink(links);
+        tree.BatchCut(links);
+    }
+}
+
+TEST(ParlaySuite, mini_aggregate_test) {
     int n = 1000;
     int k = n-1;
     int num_trials = 100;

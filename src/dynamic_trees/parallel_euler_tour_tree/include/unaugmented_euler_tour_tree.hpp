@@ -18,22 +18,20 @@ namespace parallel_euler_tour_tree {
 // using `IsConnected`. This implementation can also exploit parallelism when
 // many edges are added at once through `BatchLink` or many edges are deleted at
 // once through `BatchCut`.
-template<typename T = int>
-class EulerTourTree {
-using Element = _internal::Element<T>;
-using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
+class UnaugmentedEulerTourTree {
+using Element = _internal::UnaugmentedElement;
  public:
-  static parlay::type_allocator<_internal::Element<T>> allocator;
+  static parlay::type_allocator<_internal::UnaugmentedElement> allocator;
 
-  EulerTourTree() = delete;
+  UnaugmentedEulerTourTree() = delete;
   // Initializes n-vertex forest with no edges.
-  explicit EulerTourTree(int num_vertices);
-  explicit EulerTourTree(int num_vertices, size_t seed);
-  ~EulerTourTree();
-  EulerTourTree(const EulerTourTree&) = delete;
-  EulerTourTree(EulerTourTree&&) = delete;
-  EulerTourTree& operator=(const EulerTourTree&) = delete;
-  EulerTourTree& operator=(EulerTourTree&&) = delete;
+  explicit UnaugmentedEulerTourTree(int num_vertices);
+  explicit UnaugmentedEulerTourTree(int num_vertices, size_t seed);
+  ~UnaugmentedEulerTourTree();
+  UnaugmentedEulerTourTree(const UnaugmentedEulerTourTree&) = delete;
+  UnaugmentedEulerTourTree(UnaugmentedEulerTourTree&&) = delete;
+  UnaugmentedEulerTourTree& operator=(const UnaugmentedEulerTourTree&) = delete;
+  UnaugmentedEulerTourTree& operator=(UnaugmentedEulerTourTree&&) = delete;
 
   // Returns true if `u` and `v` are in the same tree in the represented forest.
   bool IsConnected(int u, int v) const;
@@ -43,8 +41,6 @@ using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
   // Removes edge {`u`, `v`} from forest. The edge must be present in the
   // forest.
   void Cut(int u, int v);
-  // Set the value of vertex `v` to be `new_value`.
-  void Update(int v, T new_value);
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
@@ -52,9 +48,6 @@ using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
   // Removes all edges in the `len`-length array `cuts` from the forest. These
   // edges must be present in the forest and must be distinct.
   void BatchCut(std::pair<int, int>* cuts, int len);
-  // Updates all the vertices in the `len`-length array `vertices` with the
-  // new corresponding value in the `new_values` array.
-  void BatchUpdate(int* vertices, T* new_values, int len);
 
   // More modern interface helpers
   void batch_link(parlay::sequence<std::pair<int, int>>& links) {
@@ -71,38 +64,35 @@ using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
   }
 
  private:
-  void BatchCutRecurse(std::pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
-    parlay::sequence<Element*>& join_targets, parlay::sequence<Element*>& edge_elements);
+  void BatchCutRecurse(std::pair<int, int>* cuts, int len,
+      bool* ignored, _internal::UnaugmentedElement** join_targets,
+      _internal::UnaugmentedElement** edge_elements);
 
   int num_vertices_;
   pbbs::random randomness_;
 
   std::vector<Element*> node_pool;
  public:
-  _internal::Element<T>* vertices_;
+  _internal::UnaugmentedElement* vertices_;
   _internal::EdgeMap<Element> edges_;
 };
 
-template<typename T>
-parlay::type_allocator<_internal::Element<T>> EulerTourTree<T>::allocator;
-
+parlay::type_allocator<_internal::UnaugmentedElement> UnaugmentedEulerTourTree::allocator;
 
 
 namespace {
 
-  // On BatchCut, randomly ignore 1/`kBatchCutRecursiveFactor` cuts and recurse
+  // On BatchCut, randomly ignore 1/`kBatchCutRecursiveFactorUA` cuts and recurse
   // on them later.
-  constexpr int kBatchCutRecursiveFactor{100};
+  constexpr int kBatchCutRecursiveFactorUA{100};
 
-  template<typename T>
-  void BatchCutSequential(EulerTourTree<T>* ett, pair<int, int>* cuts, int len) {
+  void BatchCutSequential(UnaugmentedEulerTourTree* ett, pair<int, int>* cuts, int len) {
     for (int i = 0; i < len; i++) {
       ett->Cut(cuts[i].first, cuts[i].second);
     }
   }
 
-  template<typename T>
-  void BatchLinkSequential(EulerTourTree<T>* ett, pair<int, int>* links, int len) {
+  void BatchLinkSequential(UnaugmentedEulerTourTree* ett, pair<int, int>* links, int len) {
     for (int i = 0; i < len; i++) {
       ett->Link(links[i].first, links[i].second);
     }
@@ -110,8 +100,7 @@ namespace {
 
 }  // namespace
 
-template<typename T>
-EulerTourTree<T>::EulerTourTree(int num_vertices)
+UnaugmentedEulerTourTree::UnaugmentedEulerTourTree(int num_vertices)
     : num_vertices_{num_vertices} , edges_{num_vertices_} , randomness_{} {
   Element::Initialize();
   vertices_ = pbbs::new_array_no_init<Element>(num_vertices_);
@@ -125,8 +114,7 @@ EulerTourTree<T>::EulerTourTree(int num_vertices)
     node_pool.push_back(allocator.create(randomness_.ith_rand(i)));
 }
 
-template<typename T>
-EulerTourTree<T>::EulerTourTree(int num_vertices, size_t seed)
+UnaugmentedEulerTourTree::UnaugmentedEulerTourTree(int num_vertices, size_t seed)
     : num_vertices_{num_vertices} , edges_{num_vertices_} , randomness_{seed} {
   Element::Initialize();
   vertices_ = pbbs::new_array_no_init<Element>(num_vertices_);
@@ -140,8 +128,7 @@ EulerTourTree<T>::EulerTourTree(int num_vertices, size_t seed)
     node_pool.push_back(allocator.create(randomness_.ith_rand(i)));
 }
 
-template<typename T>
-EulerTourTree<T>::~EulerTourTree() {
+UnaugmentedEulerTourTree::~UnaugmentedEulerTourTree() {
   pbbs::delete_array(vertices_, num_vertices_);
   for (auto node : node_pool)
     allocator.destroy(node);
@@ -149,13 +136,11 @@ EulerTourTree<T>::~EulerTourTree() {
   Element::Finish();
 }
 
-template<typename T>
-bool EulerTourTree<T>::IsConnected(int u, int v) const {
+bool UnaugmentedEulerTourTree::IsConnected(int u, int v) const {
   return vertices_[u].FindRepresentative() == vertices_[v].FindRepresentative();
 }
 
-template<typename T>
-void EulerTourTree<T>::Link(int u, int v) {
+void UnaugmentedEulerTourTree::Link(int u, int v) {
   Element* uv{allocator.alloc()};
   new (uv) Element{randomness_.ith_rand(0)};
   Element* vu = allocator.alloc();
@@ -172,14 +157,9 @@ void EulerTourTree<T>::Link(int u, int v) {
   Element::Join(uv, v_right);
   Element::Join(v_left, vu);
   Element::Join(vu, u_right);
-  Element::RecomputeAggregate(u_left);
-  Element::RecomputeAggregate(uv);
-  Element::RecomputeAggregate(v_left);
-  Element::RecomputeAggregate(vu);
 }
 
-template<typename T>
-void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
+void UnaugmentedEulerTourTree::BatchLink(pair<int, int>* links, int len) {
   if (len <= 75) {
     BatchLinkSequential(this, links, len);
     return;
@@ -201,10 +181,15 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
   });
   parlay::integer_sort_inplace(links_both_dirs, [&] (pair<uint32_t,uint32_t> p) { return p.first; });
 
-  parlay::sequence<Element*> split_successors(2*len);
-  parlay::sequence<AugmentedElement*> vertices = parlay::tabulate(2*len, [&] (size_t i) {
+  Element** split_successors{pbbs::new_array_no_init<Element*>(2 * len)};
+  parallel_for (0, 2*len, [&] (size_t i) {
     int u, v;
     std::tie(u, v) = links_both_dirs[i];
+
+    // split on each vertex that appears in the input
+    if (i == 2 * len - 1 || u != links_both_dirs[i + 1].first) {
+      split_successors[i] = (Element*) vertices_[u].Split();
+    }
 
     // allocate edge element
     if (u < v) {
@@ -214,19 +199,10 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
       vu->twin_ = uv;
       edges_.Insert(u, v, uv);
     }
-
-    // split on each vertex that appears in the input
-    if (i == 2 * len - 1 || u != links_both_dirs[i + 1].first) {
-      split_successors[i] = (Element*) vertices_[u].Split();
-      return (AugmentedElement*) &vertices_[u];
-    } else {
-      split_successors[i] = (Element*) nullptr;
-      return (AugmentedElement*) nullptr;
-    }
   });
   randomness_ = randomness_.next();
 
-  parlay::sequence<AugmentedElement*> join_lefts = parlay::tabulate(2*len, [&] (size_t i) {
+  parallel_for (0, 2*len, [&] (size_t i) {
     int u, v;
     std::tie(u, v) = links_both_dirs[i];
     Element* uv{edges_.Find(u, v)};
@@ -243,14 +219,12 @@ void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
       std::tie(u2, v2) = links_both_dirs[i + 1];
       Element::Join(vu, edges_.Find(u2, v2));
     }
-    return (AugmentedElement*) vu;
   });
-  Element::BatchRecomputeAggregate(vertices);
-  Element::BatchRecomputeAggregate(join_lefts);
+
+  pbbs::delete_array(split_successors, 2 * len);
 }
 
-template<typename T>
-void EulerTourTree<T>::Cut(int u, int v) {
+void UnaugmentedEulerTourTree::Cut(int u, int v) {
   Element* uv{edges_.Find(u, v)};
   Element* vu{uv->twin_};
   edges_.Delete(u, v);
@@ -266,8 +240,6 @@ void EulerTourTree<T>::Cut(int u, int v) {
   allocator.free(vu);
   Element::Join(u_left, u_right);
   Element::Join(v_left, v_right);
-  Element::RecomputeAggregate(u_left);
-  Element::RecomputeAggregate(v_left);
 }
 
 // `ignored`, `join_targets`, and `edge_elements` are scratch space.
@@ -276,9 +248,8 @@ void EulerTourTree<T>::Cut(int u, int v) {
 // `join_targets` stores sequence elements that need to be joined to each other.
 // `edge_elements[i]` stores a pointer to the sequence element corresponding to
 // edge `cuts[i]`.
-template<typename T>
-void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
-    parlay::sequence<Element*>& join_targets, parlay::sequence<Element*>& edge_elements) {
+void UnaugmentedEulerTourTree::BatchCutRecurse(pair<int, int>* cuts, int len,
+    bool* ignored, Element** join_targets, Element** edge_elements) {
   if (len <= 75) {
     BatchCutSequential(this, cuts, len);
     return;
@@ -304,7 +275,7 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::se
   // afterwards.
 
   parallel_for (0, len, [&] (size_t i) {
-    ignored[i] = randomness_.ith_rand(i) % kBatchCutRecursiveFactor == 0;
+    ignored[i] = randomness_.ith_rand(i) % kBatchCutRecursiveFactorUA == 0;
 
     if (!ignored[i]) {
       int u, v;
@@ -365,7 +336,6 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::se
     }
   });
 
-  parlay::sequence<AugmentedElement*> recomputes(2*len);
   parallel_for (0, len, [&] (size_t i) {
     if (!ignored[i]) {
       // Here we must use `edge_elements[i]` instead of `edges_.Find(u, v)`
@@ -381,48 +351,35 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::se
 
       if (join_targets[4 * i] != nullptr) {
         Element::Join(join_targets[4 * i], join_targets[4 * i + 1]);
-        recomputes[i/2] = join_targets[4*i];
       }
       if (join_targets[4 * i + 2] != nullptr) {
         Element::Join(join_targets[4 * i + 2], join_targets[4 * i + 3]);
-        recomputes[i/2+1] = join_targets[4*i+2];
       }
     }
   });
-  Element::BatchRecomputeAggregate(recomputes);
 
-  seq::sequence<pair<int, int>> cuts_seq{seq::sequence<pair<int, int>>(cuts, len)};
-  seq::sequence<bool> ignored_seq{seq::sequence<bool>(ignored.begin(), len)};
-  seq::sequence<pair<int, int>> next_cuts_seq{pbbs::pack(cuts_seq, ignored_seq)};
+  seq::sequence<pair<int, int>> cuts_seq{
+      seq::sequence<pair<int, int>>(cuts, len)};
+  seq::sequence<bool> ignored_seq{seq::sequence<bool>(ignored, len)};
+  seq::sequence<pair<int, int>> next_cuts_seq{
+    pbbs::pack(cuts_seq, ignored_seq)};
   BatchCutRecurse(next_cuts_seq.as_array(), next_cuts_seq.size(),
       ignored, join_targets, edge_elements);
   pbbs::delete_array(next_cuts_seq.as_array(), next_cuts_seq.size());
 }
 
-template<typename T>
-void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
+void UnaugmentedEulerTourTree::BatchCut(pair<int, int>* cuts, int len) {
   if (len <= 75) {
     BatchCutSequential(this, cuts, len);
     return;
   }
-  parlay::sequence<bool> ignored(len);
-  parlay::sequence<Element*> join_targets(4*len);
-  parlay::sequence<Element*> edge_elements(len);
+  bool* ignored{pbbs::new_array_no_init<bool>(len)};
+  Element** join_targets{pbbs::new_array_no_init<Element*>(4 * len)};
+  Element** edge_elements{pbbs::new_array_no_init<Element*>(len)};
   BatchCutRecurse(cuts, len, ignored, join_targets, edge_elements);
-}
-
-template<typename T>
-void EulerTourTree<T>::Update(int v, T new_value) {
-  Element::Update(&vertices_[v], new_value);
-}
-
-template<typename T>
-void EulerTourTree<T>::BatchUpdate(int* vertices, T* new_values, int len) {
-  Element** update_targets{pbbs::new_array_no_init<Element*>(len)};
-  parallel_for (0, len, [&] (size_t i) {
-    update_targets[i] = vertices_[vertices[i]];
-  });
-  BatchUpdate(update_targets, new_values, len);
+  pbbs::delete_array(edge_elements, len);
+  pbbs::delete_array(join_targets, 4 * len);
+  pbbs::delete_array(ignored, len);
 }
 
 }  // namespace parallel_euler_tour_tree

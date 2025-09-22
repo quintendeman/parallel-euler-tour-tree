@@ -17,9 +17,8 @@ namespace _internal {
 //
 // Only one of (u, v) and (v, u) should be added to the map; we can find the
 // other edge using the `twin_` pointer in `Element`.
-template<typename T>
+template<typename Element>
 class EdgeMap {
-using Element = _internal::Element<T>;
  public:
   EdgeMap() = delete;
   explicit EdgeMap(int num_vertices);
@@ -38,18 +37,18 @@ using Element = _internal::Element<T>;
 };
 
 
-template<typename T>
-EdgeMap<T>::EdgeMap(int num_vertices)
+template<typename Element>
+EdgeMap<Element>::EdgeMap(int num_vertices)
     : map_{nullptr, static_cast<size_t>(num_vertices - 1),
           std::make_pair(-1, -1), std::make_pair(-2, -2)} {}
 
-template<typename T>
-EdgeMap<T>::~EdgeMap() {
+template<typename Element>
+EdgeMap<Element>::~EdgeMap() {
   map_.del();
 }
 
-template<typename T>
-bool EdgeMap<T>::Insert(int u, int v, Element* edge) {
+template<typename Element>
+bool EdgeMap<Element>::Insert(int u, int v, Element* edge) {
   if (u > v) {
     std::swap(u, v);
     edge = edge->twin_;
@@ -57,16 +56,16 @@ bool EdgeMap<T>::Insert(int u, int v, Element* edge) {
   return map_.insert(make_pair(u, v), edge);
 }
 
-template<typename T>
-bool EdgeMap<T>::Delete(int u, int v) {
+template<typename Element>
+bool EdgeMap<Element>::Delete(int u, int v) {
   if (u > v) {
     std::swap(u, v);
   }
   return map_.deleteVal(make_pair(u, v));
 }
 
-template<typename T>
-_internal::Element<T>* EdgeMap<T>::Find(int u, int v) {
+template<typename Element>
+Element* EdgeMap<Element>::Find(int u, int v) {
   if (u > v) {
     Element* vu{*map_.find(make_pair(v, u))};
     return vu == nullptr ? nullptr : vu->twin_;
@@ -75,8 +74,8 @@ _internal::Element<T>* EdgeMap<T>::Find(int u, int v) {
   }
 }
 
-template<typename T>
-void EdgeMap<T>::FreeElements(parlay::type_allocator<Element>* allocator) {
+template<typename Element>
+void EdgeMap<Element>::FreeElements(parlay::type_allocator<Element>* allocator) {
   parallel_for (0, map_.capacity, [&] (size_t i) {
     auto kv{map_.table[i]};
     auto key{get<0>(kv)};

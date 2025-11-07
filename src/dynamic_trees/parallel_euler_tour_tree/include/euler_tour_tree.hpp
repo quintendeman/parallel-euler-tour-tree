@@ -48,10 +48,10 @@ using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
 
   // Adds all edges in the `len`-length array `links` to the forest. Adding
   // these edges must not create cycles in the graph.
-  void BatchLink(std::pair<int, int>* links, int len);
+  void BatchLink(const std::pair<int, int>* links, int len);
   // Removes all edges in the `len`-length array `cuts` from the forest. These
   // edges must be present in the forest and must be distinct.
-  void BatchCut(std::pair<int, int>* cuts, int len);
+  void BatchCut(const std::pair<int, int>* cuts, int len);
   // Updates all the vertices in the `len`-length array `vertices` with the
   // new corresponding value in the `new_values` array.
   void BatchUpdate(int* vertices, T* new_values, int len);
@@ -63,15 +63,15 @@ using AugmentedElement = parallel_skip_list::AugmentedElement<T>;
   void batch_cut(parlay::sequence<std::pair<int, int>>& cuts) {
     BatchCut(cuts.begin(), cuts.size());
   }
-  void BatchLink(parlay::sequence<std::pair<int, int>>& links) {
+  void BatchLink(const parlay::sequence<std::pair<int, int>>& links) {
     BatchLink(links.begin(), links.size());
   }
-  void BatchCut(parlay::sequence<std::pair<int, int>>& cuts) {
+  void BatchCut(const parlay::sequence<std::pair<int, int>>& cuts) {
     BatchCut(cuts.begin(), cuts.size());
   }
 
  private:
-  void BatchCutRecurse(std::pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
+  void BatchCutRecurse(const std::pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
     parlay::sequence<Element*>& join_targets, parlay::sequence<Element*>& edge_elements);
 
   int num_vertices_;
@@ -95,14 +95,14 @@ namespace {
   constexpr int kBatchCutRecursiveFactor{100};
 
   template<typename T>
-  void BatchCutSequential(EulerTourTree<T>* ett, pair<int, int>* cuts, int len) {
+  void BatchCutSequential(EulerTourTree<T>* ett, const pair<int, int>* cuts, int len) {
     for (int i = 0; i < len; i++) {
       ett->Cut(cuts[i].first, cuts[i].second);
     }
   }
 
   template<typename T>
-  void BatchLinkSequential(EulerTourTree<T>* ett, pair<int, int>* links, int len) {
+  void BatchLinkSequential(EulerTourTree<T>* ett, const pair<int, int>* links, int len) {
     for (int i = 0; i < len; i++) {
       ett->Link(links[i].first, links[i].second);
     }
@@ -179,7 +179,7 @@ void EulerTourTree<T>::Link(int u, int v) {
 }
 
 template<typename T>
-void EulerTourTree<T>::BatchLink(pair<int, int>* links, int len) {
+void EulerTourTree<T>::BatchLink(const pair<int, int>* links, int len) {
   if (len <= 75) {
     BatchLinkSequential(this, links, len);
     return;
@@ -277,7 +277,7 @@ void EulerTourTree<T>::Cut(int u, int v) {
 // `edge_elements[i]` stores a pointer to the sequence element corresponding to
 // edge `cuts[i]`.
 template<typename T>
-void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
+void EulerTourTree<T>::BatchCutRecurse(const pair<int, int>* cuts, int len, parlay::sequence<bool>& ignored,
     parlay::sequence<Element*>& join_targets, parlay::sequence<Element*>& edge_elements) {
   if (len <= 75) {
     BatchCutSequential(this, cuts, len);
@@ -391,8 +391,8 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::se
   });
   Element::BatchRecomputeAggregate(recomputes);
 
-  seq::sequence<pair<int, int>> cuts_seq{seq::sequence<pair<int, int>>(cuts, len)};
-  seq::sequence<bool> ignored_seq{seq::sequence<bool>(ignored.begin(), len)};
+  auto cuts_seq = seq::sequence<std::pair<int, int>>::tabulate<std::pair<int, int>>(len, [&](size_t i) { return cuts[i]; });
+  seq::sequence<bool> ignored_seq(ignored.data(), static_cast<size_t>(len));
   seq::sequence<pair<int, int>> next_cuts_seq{pbbs::pack(cuts_seq, ignored_seq)};
   BatchCutRecurse(next_cuts_seq.as_array(), next_cuts_seq.size(),
       ignored, join_targets, edge_elements);
@@ -400,7 +400,7 @@ void EulerTourTree<T>::BatchCutRecurse(pair<int, int>* cuts, int len, parlay::se
 }
 
 template<typename T>
-void EulerTourTree<T>::BatchCut(pair<int, int>* cuts, int len) {
+void EulerTourTree<T>::BatchCut(const pair<int, int>* cuts, int len) {
   if (len <= 75) {
     BatchCutSequential(this, cuts, len);
     return;
